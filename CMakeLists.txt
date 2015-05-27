@@ -30,6 +30,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR CMAKE_COMPILER_IS_GNUCXX)
     endif()
 endif()
 
+set (DEMO_FILES src/demo.cpp) 
 
 set (CPP_FILES src/Map.cpp)
 set (HPP_FILES include/PPFMap/Map.h)
@@ -40,3 +41,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 cuda_include_directories (${CMAKE_SOURCE_DIR}/include)
 
 cuda_add_library(ppfmap SHARED ${CPP_FILES} ${HPP_FILES} ${CU_FILES})
+
+cuda_add_executable(demo ${DEMO_FILES})
+target_link_libraries (demo ppfmap ${PCL_LIBRARIES})
