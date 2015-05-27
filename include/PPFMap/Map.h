@@ -8,6 +8,8 @@ namespace ppfmap {
 
 class Map {
 public:
+    typedef boost::shared_ptr<Map> Ptr;
+
     /** \brief Empty constructor.
      */
     Map() : discretization_distance(0.0f) , discretization_angle(0.0f) {}

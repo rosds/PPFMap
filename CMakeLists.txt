@@ -33,7 +33,9 @@ endif()
 set (DEMO_FILES src/demo.cpp) 
 
 set (CPP_FILES src/Map.cpp)
-set (HPP_FILES include/PPFMap/Map.h)
+set (HPP_FILES 
+    include/PPFMap/Map.h
+    include/PPFMap/PPFMatch.h)
 
 set (CU_FILES src/Map.cu)
 
