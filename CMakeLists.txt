@@ -32,12 +32,17 @@ endif()
 
 set (DEMO_FILES src/demo.cpp) 
 
-set (CPP_FILES src/Map.cpp)
+set (CPP_FILES 
+    src/Map.cpp
+    src/PPFMatch.cpp)
+
 set (HPP_FILES 
     include/PPFMap/Map.h
     include/PPFMap/PPFMatch.h)
 
-set (CU_FILES src/Map.cu)
+set (CU_FILES 
+    src/Map.cu
+    src/ppf_cuda_calls.cu)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 cuda_include_directories (${CMAKE_SOURCE_DIR}/include)

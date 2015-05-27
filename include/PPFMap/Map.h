@@ -1,6 +1,7 @@
 #ifndef PPFMAP_MAP_HH__
 #define PPFMAP_MAP_HH__
 
+#include <iostream>
 #include <cuda_runtime.h>
 #include <pcl/cuda/pcl_cuda_base.h>
 

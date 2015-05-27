@@ -40,9 +40,10 @@ int main(int argc, char *argv[]) {
     //  Compute the model's normals
     // ========================================================================
 
-    ppfmap::PPFMatch<pcl::PointXYZ, pcl::Normal> ppf_matching;
+    ppfmap::PPFMatch<pcl::PointXYZ, pcl::Normal> ppf_matching(12.0f / 180.0f * static_cast<float>(M_PI), 0.001f);
     ppf_matching.setModelPointCloud(model);
     ppf_matching.setModelNormals(model_normals);
+    ppf_matching.initPPFSearchStruct();
 
     // ========================================================================
     //  Visualize the clouds

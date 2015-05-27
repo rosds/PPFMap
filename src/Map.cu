@@ -100,4 +100,14 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                           ppfe);
 
     }
+
+    for (int i = 0; i < ppf_codes.size(); i++) {
+        const uint64_t code = ppf_codes[i];
+
+        uint32_t hk = static_cast<uint32_t>(code >> 32);
+        uint32_t id = static_cast<uint32_t>(code >> 16 & 0xFFFF);
+        uint32_t angle = static_cast<uint32_t>(code & 0xFFFF);
+
+        std::cout << hk << " | " << id << " | " << angle << std::endl;
+    }
 }
