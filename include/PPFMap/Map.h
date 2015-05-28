@@ -4,6 +4,8 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include <thrust/sort.h>
+#include <thrust/scan.h>
+#include <thrust/iterator/constant_iterator.h>
 #include <pcl/cuda/pcl_cuda_base.h>
 
 
@@ -35,7 +37,12 @@ private:
     const float discretization_distance;
     const float discretization_angle;
 
+    std::size_t max_votes;
+
     thrust::device_vector<uint64_t> ppf_codes;
+    thrust::device_vector<uint32_t> hash_keys;
+    thrust::device_vector<uint32_t> ppf_index;
+    thrust::device_vector<uint32_t> ppf_count;
 
 }; // class Map
 
