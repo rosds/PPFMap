@@ -28,14 +28,7 @@ public:
         normals_ = normals;
     }
 
-    void initPPFSearchStruct() {
-    
-        model_ppf_map = cuda::setPPFMap(reinterpret_cast<float*>(model_->points.data()), 
-                                        reinterpret_cast<float*>(normals_->points.data()), 
-                                        model_->size(),
-                                        discretization_distance,
-                                        discretization_angle);
-    }
+    void initPPFSearchStruct();
 
 private:
 
@@ -49,5 +42,7 @@ private:
 };
 
 } // namespace ppfmap
+
+#include <PPFMap/impl/PPFMatch.hpp>
 
 #endif // PPFMAP_PPFMATCH_HH__

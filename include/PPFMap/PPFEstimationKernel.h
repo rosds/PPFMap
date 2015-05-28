@@ -1,6 +1,9 @@
 #ifndef PPFMAP_PPF_ESTIMATION_KERNEL_HH__
 #define PPFMAP_PPF_ESTIMATION_KERNEL_HH__
 
+__constant__ float affine[12];
+
+
 namespace ppfmap {
 
     template <template <typename> class Storage>
@@ -11,23 +14,25 @@ namespace ppfmap {
         const int point_index;
         const float discretization_distance;
         const float discretization_angle;
-        const float* alignment_transformation;
 
         PPFEstimationKernel(const float3 position,
                             const float3 normal,
                             const int index,
                             const float disc_dist,
                             const float disc_angle,
-                            const float* transformation)
+                            float *transformation)
             : point_position(position)
             , point_normal(normal)
             , point_index(index)
             , discretization_distance(disc_dist)
-            , discretization_angle(disc_angle)
-            , alignment_transformation(transformation) {}
+            , discretization_angle(disc_angle) {
+            
+            // Set the transformation to the constant memory of the gpu.
+            cudaMemcpyToSymbol(affine, transformation, 12 * sizeof(float));
+        }
 
-        template <typename T>
-        __host__ __device__
+
+        template <typename T> __device__
         uint64_t operator()(const T position, const T normal) const {
 
             // Distance vector between points position
@@ -75,22 +80,22 @@ namespace ppfmap {
             // Compute the hash key
             uint32_t hk = d1 ^ d2 ^ d3 ^ d4;
 
-            d_x = thrust::get<0>(position) * alignment_transformation[0] + 
-                  thrust::get<1>(position) * alignment_transformation[1] + 
-                  thrust::get<2>(position) * alignment_transformation[2] + 
-                  alignment_transformation[3];
-            d_y = thrust::get<0>(position) * alignment_transformation[4] + 
-                  thrust::get<1>(position) * alignment_transformation[5] + 
-                  thrust::get<2>(position) * alignment_transformation[6] + 
-                  alignment_transformation[7];
-            d_z = thrust::get<0>(position) * alignment_transformation[8] + 
-                  thrust::get<1>(position) * alignment_transformation[9] + 
-                  thrust::get<2>(position) * alignment_transformation[10] + 
-                  alignment_transformation[11];
+            d_x = thrust::get<0>(position) * affine[0] + 
+                  thrust::get<1>(position) * affine[1] + 
+                  thrust::get<2>(position) * affine[2] + 
+                  affine[3];
+            d_y = thrust::get<0>(position) * affine[4] + 
+                  thrust::get<1>(position) * affine[5] + 
+                  thrust::get<2>(position) * affine[6] + 
+                  affine[7];
+            d_z = thrust::get<0>(position) * affine[8] + 
+                  thrust::get<1>(position) * affine[9] + 
+                  thrust::get<2>(position) * affine[10] + 
+                  affine[11];
 
             uint16_t id = static_cast<uint16_t>(point_index);
             uint16_t alpha = static_cast<int16_t>(-atan2f(-d_z, d_y) / discretization_angle);
-
+            
             return (static_cast<uint64_t>(hk) << 32) | 
                    (static_cast<uint64_t>(id) << 16) | 
                    (static_cast<uint64_t>(alpha));

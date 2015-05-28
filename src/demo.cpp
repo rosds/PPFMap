@@ -2,6 +2,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include <PPFMap/PPFMatch.h>
@@ -13,6 +14,7 @@ int main(int argc, char *argv[]) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr scene(new pcl::PointCloud<pcl::PointXYZ>());
     
     pcl::PointCloud<pcl::Normal>::Ptr model_normals(new pcl::PointCloud<pcl::Normal>());
+    pcl::PointCloud<pcl::PointNormal>::Ptr model_with_normals(new pcl::PointCloud<pcl::PointNormal>());
     
     // ========================================================================
     //  Load the point clouds of the model and the scene
@@ -26,7 +28,7 @@ int main(int argc, char *argv[]) {
     pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
     // ========================================================================
-    //  Compute the model's normals
+    //  Compute the model's normals and Downsample
     // ========================================================================
     
     pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
@@ -36,13 +38,21 @@ int main(int argc, char *argv[]) {
     ne.setRadiusSearch(0.03f);
     ne.compute(*model_normals);
 
+    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+
+    pcl::PointCloud<pcl::PointNormal>::Ptr model_downsampled(new pcl::PointCloud<pcl::PointNormal>());
+    pcl::VoxelGrid<pcl::PointNormal> sor;
+    sor.setInputCloud(model_with_normals);
+    sor.setLeafSize(0.01f, 0.01f, 0.01f);
+    sor.filter(*model_downsampled);
+
     // ========================================================================
-    //  Compute the model's normals
+    //  Compute the model's ppfs
     // ========================================================================
 
-    ppfmap::PPFMatch<pcl::PointXYZ, pcl::Normal> ppf_matching(12.0f / 180.0f * static_cast<float>(M_PI), 0.001f);
-    ppf_matching.setModelPointCloud(model);
-    ppf_matching.setModelNormals(model_normals);
+    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(12.0f / 180.0f * static_cast<float>(M_PI), 0.001f);
+    ppf_matching.setModelPointCloud(model_downsampled);
+    ppf_matching.setModelNormals(model_downsampled);
     ppf_matching.initPPFSearchStruct();
 
     // ========================================================================
@@ -50,10 +60,9 @@ int main(int argc, char *argv[]) {
     // ========================================================================
 
     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer());
-    viewer->addPointCloud(model, "model_cloud");
     viewer->addPointCloud(scene, "scene_cloud");
 
-    viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal> (model, model_normals, 10, 0.05, "normals");
+    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (model_downsampled, model_downsampled, 10, 0.05, "normals");
 
     while (!viewer->wasStopped()) {
         viewer->spinOnce();

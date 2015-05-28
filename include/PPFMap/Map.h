@@ -3,7 +3,9 @@
 
 #include <iostream>
 #include <cuda_runtime.h>
+#include <thrust/sort.h>
 #include <pcl/cuda/pcl_cuda_base.h>
+
 
 namespace ppfmap {
 

@@ -1,8 +1,6 @@
 #include <PPFMap/Map.h>
 #include <PPFMap/PPFEstimationKernel.h>
 
-__constant__ float alignment_transformation[12];
-
 
 ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                  const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr normals,
@@ -84,30 +82,18 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                      - point_position.y * affine[9] 
                      - point_position.z * affine[10];
 
-        // Set the transformation to the constant memory of the gpu.
-        cudaMemcpyToSymbol(alignment_transformation, affine, 12 * sizeof(float));
-
         ppfmap::PPFEstimationKernel<pcl::cuda::Device> ppfe(point_position,
                                                             point_normal,
                                                             i,
                                                             discretization_distance,
                                                             discretization_angle,
-                                                            alignment_transformation);
+                                                            affine);
 
         thrust::transform(d_cloud.zip_begin(), d_cloud.zip_end(),
                           d_normals.zip_begin(),
                           ppf_codes.begin() + i * cloud->size(),
                           ppfe);
-
     }
 
-    for (int i = 0; i < ppf_codes.size(); i++) {
-        const uint64_t code = ppf_codes[i];
-
-        uint32_t hk = static_cast<uint32_t>(code >> 32);
-        uint32_t id = static_cast<uint32_t>(code >> 16 & 0xFFFF);
-        uint32_t angle = static_cast<uint32_t>(code & 0xFFFF);
-
-        std::cout << hk << " | " << id << " | " << angle << std::endl;
-    }
+    thrust::sort(ppf_codes.begin(), ppf_codes.end());
 }
