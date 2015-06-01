@@ -2,9 +2,14 @@
 #define PPFMAP_PPFMATCH_HH__
 
 #include <pcl/common/common_headers.h>
+#include <pcl/kdtree/kdtree_flann.h>
 
+#include <thrust/host_vector.h>
+
+#include <PPFMap/utils.h>
 #include <PPFMap/Map.h>
 #include <PPFMap/ppf_cuda_calls.h>
+
 
 namespace ppfmap {
 
@@ -29,6 +34,21 @@ public:
     }
 
     void initPPFSearchStruct();
+
+    /** \brief Perform the voting and accumulation of the PPF features in the 
+     * model and returns the model index with the most votes.
+     *
+     *  \param[in] point_index Index of the point.
+     *  \param[in] cloud The pointer to the cloud where the queried point is.
+     *  \param[in] cloud_normals The pointer to the normals of the cloud.
+     *  \param[in] neighborhood_radius The radius to consider for building 
+     *  pairs around the reference point.
+     *  \return The index of the model point with the higher number of votes.
+     */
+    int findBestMatch(const int point_index,
+                      const PointCloudPtr cloud,
+                      const NormalsPtr cloud_normals,
+                      const float neighborhood_radius);
 
 private:
 

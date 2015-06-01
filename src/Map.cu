@@ -10,6 +10,60 @@ struct extract_hash_key : thrust::unary_function<uint64_t, uint32_t> {
 };
 
 
+struct copy_element_by_index : thrust::unary_function<uint32_t, uint32_t> {
+    const uint32_t* ppf_index_ptr;
+
+    copy_element_by_index(thrust::device_vector<uint32_t> const& vec) 
+        : ppf_index_ptr(thrust::raw_pointer_cast(vec.data())) {}
+
+    __host__ __device__
+    uint32_t operator()(const uint32_t index) const {
+        return ppf_index_ptr[index];
+    }
+};
+
+
+struct write_votes {
+    const uint64_t* model_ppf_ptr;
+    const float discretization_angle;
+    uint32_t* votes_ptr;
+
+    write_votes(thrust::device_vector<uint64_t> const& model_ppf,
+                const float disc_angle,
+                thrust::device_vector<uint32_t> &votes)
+        : model_ppf_ptr(thrust::raw_pointer_cast(model_ppf.data()))
+        , discretization_angle(disc_angle)
+        , votes_ptr(thrust::raw_pointer_cast(votes.data())) {}
+
+    template <class Tuple> __device__
+    void operator()(Tuple t) {
+
+        const uint32_t insert_position = thrust::get<0>(t); 
+        const bool     key_found = thrust::get<1>(t); 
+        const uint32_t ppf_index = thrust::get<2>(t); 
+        const uint32_t ppf_count = thrust::get<3>(t); 
+        const float alpha_s = thrust::get<4>(t); 
+
+        if (key_found) {
+            for (int vote_idx = 0; vote_idx < ppf_count; vote_idx++) {
+
+                uint64_t model_ppf_code = model_ppf_ptr[ppf_index + vote_idx];
+
+                uint16_t model_index = static_cast<uint16_t>(model_ppf_code >> 16 & 0xFFFF);
+                float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
+
+                uint16_t alpha = static_cast<uint16_t>((alpha_m - alpha_s) / discretization_angle);
+
+                uint32_t vote = static_cast<uint32_t>(model_index) << 16 |
+                                static_cast<uint32_t>(alpha);
+
+                votes_ptr[insert_position + vote_idx] =  vote;
+            }
+        }
+    }
+};
+
+
 ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                  const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr normals,
                  const float disc_dist,
@@ -19,6 +73,8 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
 
     const size_t number_of_points = cloud->size();
     const size_t number_of_pairs = number_of_points * number_of_points;
+
+    float affine[12];
 
     pcl::cuda::PointCloudSOA<pcl::cuda::Device> d_cloud;
     pcl::cuda::PointCloudSOA<pcl::cuda::Device> d_normals;
@@ -38,58 +94,7 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                                                 normals->points_y[i],
                                                 normals->points_z[i]);
 
-        // Calculate the angle between the normal and the X axis.
-        float rotation_angle = acosf(point_normal.x);
-
-        // Rotation axis lays on the plane y-z (i.e. u = 0)
-        float v;
-        float w;
-
-        // The rotation axis is the cross product of the normal and the X axis. 
-        if (point_normal.y == 0.0f && point_normal.z == 0.0f) {
-            // Degenerate case, set the Y axis as the rotation axis
-            v = 1.0f;
-            w = 0.0f;
-        } else {
-            // This would be the cross product of the normal and the x axis.
-            v = point_normal.z;
-            w = - point_normal.y;
-        }
-
-        // Normalize vector
-        float norm = sqrt(v * v + w * w);
-        v /= norm;
-        w /= norm;
-
-        float affine[12];
-
-        // First row of rotation matrix
-        affine[0] = (v * v + w * w) * cosf(rotation_angle); 
-        affine[1] = - w * sinf(rotation_angle); 
-        affine[2] = v * sinf(rotation_angle); 
-
-        // Second row of rotation matrix
-        affine[4] = w * sinf(rotation_angle);
-        affine[5] = v * v + w * w * cosf(rotation_angle); 
-        affine[6] = v * w * (1.0f - cosf(rotation_angle)); 
-
-        // Third row of rotation matrix
-        affine[8] = - v * sinf(rotation_angle);
-        affine[9] = v * w * (1.0f - cosf(rotation_angle)); 
-        affine[10] = w * w + v * v * cosf(rotation_angle); 
-
-        // Translation column
-        affine[3] = - point_position.x * affine[0] 
-                    - point_position.y * affine[1] 
-                    - point_position.z * affine[2];
-
-        affine[7] = - point_position.x * affine[4] 
-                    - point_position.y * affine[5] 
-                    - point_position.z * affine[6];
-
-        affine[11] = - point_position.x * affine[8] 
-                     - point_position.y * affine[9] 
-                     - point_position.z * affine[10];
+        ppfmap::getAlignmentToX(point_position, point_normal, (float**)&affine);
 
         ppfmap::PPFEstimationKernel<pcl::cuda::Device> 
             ppfe(point_position, point_normal, i,
@@ -144,4 +149,88 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
 
     max_votes = thrust::reduce(ppf_count.begin(), ppf_count.end(), 
                                0, thrust::maximum<uint32_t>());
+}
+
+
+void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list, 
+                                  const thrust::host_vector<float> alpha_s_list,
+                                  int& m_idx, float& alpha) {
+
+
+    thrust::device_vector<uint32_t> d_hash_list = hash_list;
+    thrust::device_vector<float> d_alpha_s_list = alpha_s_list;
+
+    thrust::device_vector<bool> d_key_found(d_hash_list.size());
+    thrust::device_vector<uint32_t> d_key_index(d_hash_list.size());
+    thrust::device_vector<uint32_t> d_ppf_index(d_hash_list.size());
+    thrust::device_vector<uint32_t> d_ppf_count(d_hash_list.size());
+    thrust::device_vector<uint32_t> d_insert_pos(d_hash_list.size());
+
+    thrust::binary_search(hash_keys.begin(), hash_keys.end(),
+                          d_hash_list.begin(), d_hash_list.end(),
+                          d_key_found.begin());
+
+    thrust::lower_bound(hash_keys.begin(), hash_keys.end(),
+                        d_hash_list.begin(), d_hash_list.end(),
+                        d_key_index.begin());
+
+    thrust::transform(d_key_index.begin(), d_key_index.end(), 
+                      d_ppf_index.begin(), 
+                      copy_element_by_index(ppf_index));
+
+    thrust::transform(d_key_index.begin(), d_key_index.end(), d_ppf_count.begin(), 
+                      copy_element_by_index(ppf_count));
+
+    uint64_t votes_total = thrust::reduce(d_ppf_count.begin(), d_ppf_count.end(), 
+                                          0, thrust::plus<uint64_t>());
+
+    // This sets the position where to start inserting the votes of each ppf
+    thrust::exclusive_scan(d_ppf_count.begin(), d_ppf_count.end(), d_insert_pos.begin());
+
+    thrust::device_vector<uint32_t> votes(votes_total);
+    thrust::device_vector<uint32_t> unique_votes(votes_total);
+    thrust::device_vector<uint32_t> vote_count(votes_total);
+
+    thrust::for_each(
+        thrust::make_zip_iterator(
+            thrust::make_tuple(
+                d_insert_pos.begin(), 
+                d_key_found.begin(),
+                d_ppf_index.begin(),
+                d_ppf_count.begin(),
+                d_alpha_s_list.begin()
+            )
+        ),          
+        thrust::make_zip_iterator(
+            thrust::make_tuple(
+                d_insert_pos.end(), 
+                d_key_found.begin(),
+                d_ppf_index.end(),
+                d_ppf_count.end(),
+                d_alpha_s_list.end()
+            )
+        ),          
+        write_votes(ppf_codes, discretization_angle, votes)
+    );
+
+    thrust::sort(votes.begin(), votes.end());
+
+    thrust::pair<thrust::device_vector<uint32_t>::iterator, 
+                 thrust::device_vector<uint32_t>::iterator> end;
+
+    end = thrust::reduce_by_key(votes.begin(), votes.end(), 
+                                thrust::make_constant_iterator(1), 
+                                unique_votes.begin(), 
+                                vote_count.begin());
+
+    unique_votes.resize(end.first - unique_votes.begin());
+    vote_count.resize(end.second - vote_count.begin());
+
+    thrust::device_vector<uint32_t>::iterator iter =
+          thrust::max_element(vote_count.begin(), vote_count.end());
+
+    int position = iter - vote_count.begin();
+
+    m_idx = static_cast<int>(unique_votes[position] >> 16);
+    alpha = static_cast<float>(unique_votes[position] & 0xFFFF) * discretization_angle;
 }

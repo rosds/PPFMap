@@ -5,8 +5,14 @@
 #include <cuda_runtime.h>
 #include <thrust/sort.h>
 #include <thrust/scan.h>
+#include <thrust/binary_search.h>
 #include <thrust/iterator/constant_iterator.h>
+#include <thrust/iterator/zip_iterator.h>
+
 #include <pcl/cuda/pcl_cuda_base.h>
+
+
+#include <PPFMap/utils.h>
 
 
 namespace ppfmap {
@@ -31,6 +37,18 @@ public:
         const float disc_angle);
 
     virtual ~Map() {}
+
+    /** \brief Performs the voting and accumulation for the ppf list provided 
+     * and returns the best point index and resulting alpha.
+     *  \param[in] hash_list List of hashed ppf features to query
+     *  \param[in] alpha_s Angle to align the reference point to the x axis.
+     *  \param[out] m_idx Best matching index in Hough voting space.
+     *  \param[out] alpha Resulting angle after combining the alpha_s and 
+     *  alpha_m.
+     */
+    void searchBestMatch(const thrust::host_vector<uint32_t> hash_list, 
+                         const thrust::host_vector<float> alpha_s_list,
+                         int& m_idx, float& alpha);
 
 private:
     
