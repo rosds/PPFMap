@@ -71,9 +71,19 @@ int main(int argc, char *argv[]) {
     // ========================================================================
 
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
-    for (size_t i = 0; i < scene->size(); i++) {
-        int j = ppf_matching.findBestMatch(i, scene_with_normals, scene_with_normals, 0.6f);
-        corr->push_back(pcl::Correspondence(i, j, 0.0f));
+    int dummy = 0;
+    for (size_t i = 0; i < scene_with_normals->size(); i++) {
+        if (dummy % 10000 == 0) {
+            const auto& scene_point = scene_with_normals->at(i);
+
+            if (!pcl::isFinite(scene_point)) continue;
+
+            int j = ppf_matching.findBestMatch(i, scene_with_normals, scene_with_normals, 0.1f);
+            corr->push_back(pcl::Correspondence(i, j, 0.0f));
+        }
+        dummy++;
+
+        std::cout << i << " / " << scene_with_normals->size() << std::endl;
     }
 
     // ========================================================================
