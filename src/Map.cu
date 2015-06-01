@@ -94,7 +94,7 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                                                 normals->points_y[i],
                                                 normals->points_z[i]);
 
-        ppfmap::getAlignmentToX(point_position, point_normal, (float**)&affine);
+        ppfmap::getAlignmentToX(point_position, point_normal, &affine);
 
         ppfmap::PPFEstimationKernel<pcl::cuda::Device> 
             ppfe(point_position, point_normal, i,

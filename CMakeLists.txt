@@ -2,9 +2,11 @@ cmake_minimum_required (VERSION 2.8 FATAL_ERROR)
 
 project (PPFMap)
 
+set (BUILD_TYPE Release)
+
 find_package (CUDA REQUIRED)
-list(APPEND CUDA_NVCC_FLAGS "-arch=sm_13; -O2; -DVERBOSE")
-SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
+set(CUDA_NVCC_FLAGS " -arch=sm_30 ")
+set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 ##
 # Point Cloud Library
@@ -30,6 +32,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR CMAKE_COMPILER_IS_GNUCXX)
     endif()
 endif()
 
+
 set (DEMO_FILES src/demo.cpp) 
 
 set (CPP_FILES 
@@ -39,9 +42,10 @@ set (HPP_FILES
     include/PPFMap/Map.h
     include/PPFMap/PPFMatch.h)
 
-set (CU_FILES 
+set (CU_FILES
     src/Map.cu
     src/ppf_cuda_calls.cu)
+
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 cuda_include_directories (${CMAKE_SOURCE_DIR}/include)

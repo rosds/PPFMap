@@ -63,61 +63,60 @@ namespace ppfmap {
      */
     inline void getAlignmentToX(const float3 point,
                                 const float3 normal,
-                                float **affine) {
+                                float (*affine)[12]) {
     
-    
-    // Calculate the angle between the normal and the X axis.
-    float rotation_angle = acosf(normal.x);
+        // Calculate the angle between the normal and the X axis.
+        float rotation_angle = acosf(normal.x);
 
-    // Rotation axis lays on the plane y-z (i.e. u = 0)
-    float v;
-    float w;
+        // Rotation axis lays on the plane y-z (i.e. u = 0)
+        float v;
+        float w;
 
-    // The rotation axis is the cross product of the normal and the X axis. 
-    if (normal.y == 0.0f && normal.z == 0.0f) {
-        // Degenerate case, set the Y axis as the rotation axis
-        v = 1.0f;
-        w = 0.0f;
-    } else {
-        // This would be the cross product of the normal and the x axis.
-        v = normal.z;
-        w = - normal.y;
+        // The rotation axis is the cross product of the normal and the X axis. 
+        if (normal.y == 0.0f && normal.z == 0.0f) {
+            // Degenerate case, set the Y axis as the rotation axis
+            v = 1.0f;
+            w = 0.0f;
+        } else {
+            // This would be the cross product of the normal and the x axis.
+            v = normal.z;
+            w = - normal.y;
+        }
+
+        // Normalize vector
+        float norm = sqrt(v * v + w * w);
+        v /= norm;
+        w /= norm;
+
+        // First row of rotation matrix
+        (*affine)[0] = (v * v + w * w) * cosf(rotation_angle); 
+        (*affine)[1] = - w * sinf(rotation_angle); 
+        (*affine)[2] = v * sinf(rotation_angle); 
+
+        // Second row of rotation matrix
+        (*affine)[4] = w * sinf(rotation_angle);
+        (*affine)[5] = v * v + w * w * cosf(rotation_angle); 
+        (*affine)[6] = v * w * (1.0f - cosf(rotation_angle)); 
+
+        // Third row of rotation matrix
+        (*affine)[8] = - v * sinf(rotation_angle);
+        (*affine)[9] = v * w * (1.0f - cosf(rotation_angle)); 
+        (*affine)[10] = w * w + v * v * cosf(rotation_angle); 
+
+        // Translation column
+        (*affine)[3] = - point.x * (*affine)[0] 
+                       - point.y * (*affine)[1] 
+                       - point.z * (*affine)[2];
+                                        
+        (*affine)[7] = - point.x * (*affine)[4] 
+                       - point.y * (*affine)[5] 
+                       - point.z * (*affine)[6];
+
+        (*affine)[11] = - point.x * (*affine)[8] 
+                        - point.y * (*affine)[9] 
+                        - point.z * (*affine)[10];
+
     }
-
-    // Normalize vector
-    float norm = sqrt(v * v + w * w);
-    v /= norm;
-    w /= norm;
-
-    // First row of rotation matrix
-    (*affine)[0] = (v * v + w * w) * cosf(rotation_angle); 
-    (*affine)[1] = - w * sinf(rotation_angle); 
-    (*affine)[2] = v * sinf(rotation_angle); 
-
-    // Second row of rotation matrix
-    (*affine)[4] = w * sinf(rotation_angle);
-    (*affine)[5] = v * v + w * w * cosf(rotation_angle); 
-    (*affine)[6] = v * w * (1.0f - cosf(rotation_angle)); 
-
-    // Third row of rotation matrix
-    (*affine)[8] = - v * sinf(rotation_angle);
-    (*affine)[9] = v * w * (1.0f - cosf(rotation_angle)); 
-    (*affine)[10] = w * w + v * v * cosf(rotation_angle); 
-
-    // Translation column
-    (*affine)[3] = - point.x * (*affine)[0] 
-                   - point.y * (*affine)[1] 
-                   - point.z * (*affine)[2];
-                                    
-    (*affine)[7] = - point.x * (*affine)[4] 
-                   - point.y * (*affine)[5] 
-                   - point.z * (*affine)[6];
-
-    (*affine)[11] = - point.x * (*affine)[8] 
-                    - point.y * (*affine)[9] 
-                    - point.z * (*affine)[10];
-
-}
 
 } // namespace ppfmap
 
