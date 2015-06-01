@@ -1,4 +1,5 @@
 #include <pcl/io/pcd_io.h>
+#include <pcl/correspondence.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
@@ -9,12 +10,16 @@
 
 
 int main(int argc, char *argv[]) {
+    char name[1024];
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr model(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::PointCloud<pcl::PointXYZ>::Ptr scene(new pcl::PointCloud<pcl::PointXYZ>());
     
     pcl::PointCloud<pcl::Normal>::Ptr model_normals(new pcl::PointCloud<pcl::Normal>());
+    pcl::PointCloud<pcl::Normal>::Ptr scene_normals(new pcl::PointCloud<pcl::Normal>());
+
     pcl::PointCloud<pcl::PointNormal>::Ptr model_with_normals(new pcl::PointCloud<pcl::PointNormal>());
+    pcl::PointCloud<pcl::PointNormal>::Ptr scene_with_normals(new pcl::PointCloud<pcl::PointNormal>());
     
     // ========================================================================
     //  Load the point clouds of the model and the scene
@@ -37,8 +42,14 @@ int main(int argc, char *argv[]) {
     ne.setSearchMethod(tree);
     ne.setRadiusSearch(0.03f);
     ne.compute(*model_normals);
-
     pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+
+    ne.setInputCloud(scene);
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree2(new pcl::search::KdTree<pcl::PointXYZ>());
+    ne.setSearchMethod(tree2);
+    ne.setRadiusSearch(0.03f);
+    ne.compute(*scene_normals);
+    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
 
     pcl::PointCloud<pcl::PointNormal>::Ptr model_downsampled(new pcl::PointCloud<pcl::PointNormal>());
     pcl::VoxelGrid<pcl::PointNormal> sor;
@@ -56,6 +67,16 @@ int main(int argc, char *argv[]) {
     ppf_matching.initPPFSearchStruct();
 
     // ========================================================================
+    //  Find correspondences
+    // ========================================================================
+
+    pcl::CorrespondencesPtr corr(new pcl::Correspondences());
+    for (size_t i = 0; i < scene->size(); i++) {
+        int j = ppf_matching.findBestMatch(i, scene_with_normals, scene_with_normals, 0.6f);
+        corr->push_back(pcl::Correspondence(i, j, 0.0f));
+    }
+
+    // ========================================================================
     //  Visualize the clouds
     // ========================================================================
 
@@ -63,6 +84,13 @@ int main(int argc, char *argv[]) {
     viewer->addPointCloud(scene, "scene_cloud");
 
     viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (model_downsampled, model_downsampled, 10, 0.05, "normals");
+
+    for (const auto& c : *corr) {
+        sprintf(name, "line_%d_%d", c.index_query, c.index_match);    
+        auto& scene_point = scene->at(c.index_query);
+        auto& model_point = model_downsampled->at(c.index_match);
+        viewer->addLine(scene_point, model_point, name);
+    }
 
     while (!viewer->wasStopped()) {
         viewer->spinOnce();

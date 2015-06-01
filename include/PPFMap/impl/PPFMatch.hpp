@@ -43,7 +43,9 @@ int ppfmap::PPFMatch<PointT, NormalT>::findBestMatch(
     const auto& ref_point = cloud->at(point_index);
     const auto& ref_normal = cloud_normals->at(point_index);
 
-    getAlignmentToX(ref_point, ref_normal, (float**)&affine);
+    getAlignmentToX(ppfmap::pointToFloat3(ref_point), 
+                    ppfmap::normalToFloat3(ref_normal), 
+                    &affine);
 
     std::vector<int> indices;
     std::vector<float> distances;
