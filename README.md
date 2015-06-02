@@ -1,2 +1,13 @@
 # PPFMap
-Point Pair Features are used for rigid object detection in point clouds
+
+PPFMap is a parallel implementation of the Point Pair Feature matching 
+algorithm from [Drost, B.](http://far.in.tum.de/pub/drost2010CVPR/drost2010CVPR.pdf). The parallel
+implementation is as described in the [SLAM++](http://homes.cs.washington.edu/~newcombe/papers/Salas-Moreno_etal_cvpr2013.pdf) project.
+
+### Requirements
+
+This project may compu
+
++ Point Cloud Library (PCL 1.7) : built with CUDA support.
++ Eigen library 3.0
++ CUDA 5.0

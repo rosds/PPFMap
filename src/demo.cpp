@@ -28,8 +28,8 @@ struct Pose {
 inline bool posesWithinErrorBounds(
     const Eigen::Affine3f& pose1, const Eigen::Affine3f& pose2) {
 
-    const float clustering_position_diff_threshold_ = 0.03f;
-    const float clustering_rotation_diff_threshold_ = 50.0f / 180.0f * static_cast<float>(M_PI);
+    const float clustering_position_diff_threshold_ = 0.7f;
+    const float clustering_rotation_diff_threshold_ = 30.0f / 180.0f * static_cast<float>(M_PI);
 
     // Translation difference.
     float position_diff = (pose1.translation() - pose2.translation()).norm();
@@ -37,9 +37,6 @@ inline bool posesWithinErrorBounds(
     // Rotation angle difference.
     Eigen::AngleAxisf rotation_diff_mat(pose1.rotation().inverse() * pose2.rotation());
     float rotation_diff = fabsf(rotation_diff_mat.angle());
-
-    std::cout << "t diff " << position_diff << std::endl;
-    std::cout << "r diff " << rotation_diff << std::endl;
 
     return position_diff < clustering_position_diff_threshold_; // && 
            //rotation_diff < clustering_rotation_diff_threshold_;
@@ -148,26 +145,28 @@ int main(int argc, char *argv[]) {
         dummy++;
     }
 
-    std::vector<std::pair<int, int> > groundtruth_vector;
-
-    std::ifstream groundtruth_file("output_groundtruth.txt");
-    boost::archive::text_iarchive ia(groundtruth_file);
-
-    ia >> groundtruth_vector;
-
-    std::vector<Pose> groundtruth_poses;
-    for (const auto& pose : pose_vector) {
-        std::pair<int, int> match(pose.corr.index_query, pose.corr.index_match);
-        if (std::binary_search(groundtruth_vector.begin(), groundtruth_vector.end(), match)) {
-            groundtruth_poses.push_back(pose); 
-        }
-    }
-
-    for (const auto& pose : groundtruth_poses) {
-        posesWithinErrorBounds(groundtruth_poses[0].transformation, pose.transformation);
-    }
-
-    std::cout << "End of gt vec" << std::endl;
+/*
+ *    std::vector<std::pair<int, int> > groundtruth_vector;
+ *
+ *    std::ifstream groundtruth_file("output_groundtruth.txt");
+ *    boost::archive::text_iarchive ia(groundtruth_file);
+ *
+ *    ia >> groundtruth_vector;
+ *
+ *    std::vector<Pose> groundtruth_poses;
+ *    for (const auto& pose : pose_vector) {
+ *        std::pair<int, int> match(pose.corr.index_query, pose.corr.index_match);
+ *        if (std::binary_search(groundtruth_vector.begin(), groundtruth_vector.end(), match)) {
+ *            groundtruth_poses.push_back(pose); 
+ *        }
+ *    }
+ *
+ *    for (const auto& pose : groundtruth_poses) {
+ *        posesWithinErrorBounds(groundtruth_poses[0].transformation, pose.transformation);
+ *    }
+ *
+ *    std::cout << "End of gt vec" << std::endl;
+ */
 
 
     int cluster_idx;
@@ -201,12 +200,6 @@ int main(int argc, char *argv[]) {
 
     std::sort(cluster_votes.begin(), cluster_votes.end());
 
-    
-    for (const auto& vote : cluster_votes) {
-        std::cout << vote.first << " | " << vote.second << std::endl;
-    }
-
-
     // ========================================================================
     //  Visualize the clouds
     // ========================================================================
@@ -215,11 +208,11 @@ int main(int argc, char *argv[]) {
     viewer->addPointCloud<pcl::PointNormal>(model_downsampled, "model_downsampled");
     viewer->addPointCloud<pcl::PointNormal>(scene_downsampled, "scene_downsampled");
 
-    for (const auto& pose : pose_vector) {
+    for (const auto& pose : pose_clusters[cluster_votes.back().second]) {
         sprintf(name, "line_%d_%d", pose.corr.index_query, pose.corr.index_match);    
         auto& scene_point = scene_downsampled->at(pose.corr.index_query);
         auto& model_point = model_downsampled->at(pose.corr.index_match);
-        viewer->addLine(scene_point, model_point, name);
+        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
     }
 
     while (!viewer->wasStopped()) {

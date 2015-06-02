@@ -5,7 +5,7 @@ project (PPFMap)
 set (BUILD_TYPE Release)
 
 find_package (CUDA REQUIRED)
-set(CUDA_NVCC_FLAGS " -arch=sm_10 ")
+set(CUDA_NVCC_FLAGS " -arch=sm_30 ")
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 ##
