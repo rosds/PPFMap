@@ -48,7 +48,8 @@ public:
     int findBestMatch(const int point_index,
                       const PointCloudPtr cloud,
                       const NormalsPtr cloud_normals,
-                      const float neighborhood_radius);
+                      const float neighborhood_radius,
+                      Eigen::Affine3f& pose);
 
 private:
 

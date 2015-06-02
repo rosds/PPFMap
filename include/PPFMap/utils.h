@@ -7,39 +7,44 @@
 namespace ppfmap {
 
     template <typename PointT>
+    __device__ __host__
     float3 pointToFloat3(const PointT& p) {
         return make_float3(p.x, p.y, p.z); 
     }
 
     template <typename NormalT>
+    __device__ __host__
     float3 normalToFloat3(const NormalT& p) {
         return make_float3(p.normal_x, p.normal_y, p.normal_z); 
     }
 
+    __device__ __host__
     inline float dot(const float3& a, const float3& b) {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
-    template <typename PointT, typename NormalT>
-    inline void computePPFFeature(const PointT& ref_point,
-                                  const NormalT& ref_normal,
-                                  const PointT& point,
-                                  const NormalT& normal,
+    __device__ __host__
+    inline uint32_t hashPPF(uint32_t dist, 
+                            uint32_t a1, 
+                            uint32_t a2, 
+                            uint32_t a3) {
+        return dist ^ (static_cast<uint32_t>(a1 << 16) | 
+                       static_cast<uint32_t>(a2 << 8) | a3); 
+    }
+
+    __device__ __host__
+    inline void computePPFFeature(const float3& r,
+                                  const float3& r_n,
+                                  const float3& p,
+                                  const float3& p_n,
                                   float &f1, 
                                   float &f2, 
                                   float &f3, 
                                   float &f4) {
 
-        const float3 r = pointToFloat3(ref_point);
-        const float3 p = pointToFloat3(point);
-
-        const float3 r_n = normalToFloat3(ref_normal);
-        const float3 p_n = normalToFloat3(normal);
-
         float3 d = make_float3(p.x - r.x,
                                p.y - r.y,
                                p.z - r.z);
-
 
         const float norm = sqrt(ppfmap::dot(d, d));
 
@@ -51,6 +56,23 @@ namespace ppfmap {
         f2 = acos(ppfmap::dot(d, r_n));
         f3 = acos(ppfmap::dot(d, p_n));
         f4 = acos(ppfmap::dot(p_n, r_n));
+    }
+
+    __device__ __host__
+    inline uint32_t computePPFFeatureHash(const float3& r,
+                                          const float3& r_n,
+                                          const float3& p,
+                                          const float3& p_n,
+                                          const float disc_dist,
+                                          const float disc_angle) {
+        float f1, f2, f3, f4;
+        computePPFFeature(r, r_n, p, p_n, f1, f2, f3, f4);
+        uint32_t d1 = static_cast<uint32_t>(f1 / disc_dist);
+        uint32_t d2 = static_cast<uint32_t>(f2 / disc_angle);
+        uint32_t d3 = static_cast<uint32_t>(f3 / disc_angle);
+        uint32_t d4 = static_cast<uint32_t>(f4 / disc_angle);
+
+        return hashPPF(d1, d2, d3, d4);
     }
 
     
