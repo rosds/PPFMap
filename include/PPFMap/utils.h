@@ -33,8 +33,7 @@ namespace ppfmap {
                             uint32_t a1, 
                             uint32_t a2, 
                             uint32_t a3) {
-        return dist ^ (static_cast<uint32_t>(a1 << 16) | 
-                       static_cast<uint32_t>(a2 << 8) | a3); 
+        return dist << 24 | a1 << 16 | a2 << 8 | a3;
     }
 
     __device__ __host__

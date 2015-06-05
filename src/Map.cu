@@ -126,6 +126,11 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                                          discretization_angle,
                                          affine);
 
+        thrust::transform(d_cloud.zip_begin(), d_cloud.zip_end(),
+                          d_normals.zip_begin(),
+                          ppf_codes.begin() + i * number_of_points,
+                          ppfe);
+
         // Compute the largest distance between this group of pairs
         float max_pair_dist = thrust::transform_reduce(d_cloud.zip_begin(),
                                                        d_cloud.zip_end(),
@@ -137,10 +142,6 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
             max_distance = max_pair_dist; 
         }
 
-        thrust::transform(d_cloud.zip_begin(), d_cloud.zip_end(),
-                          d_normals.zip_begin(),
-                          ppf_codes.begin() + i * number_of_points,
-                          ppfe);
     }
     
     cloud_diameter = max_distance;

@@ -42,6 +42,16 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
                                     discretization_angle);
 
     model_map_initialized = true;
+
+    float diameter = model_ppf_map->getCloudDiameter();
+
+    if (diameter / discretization_distance > 256.0f) {
+        pcl::console::print_warn(stderr, "Warning: possible hash collitions due to distance discretization\n");
+    }
+
+    if (2.0f * static_cast<float>(M_PI) / discretization_angle > 256.0f) {
+        pcl::console::print_warn(stderr, "Warning: possible hash collitions due to angle discretization\n");
+    }
 }
 
 
@@ -55,9 +65,15 @@ int ppfmap::PPFMatch<PointT, NormalT>::findBestMatch(
 
     float affine_s[12];
     float affine_m[12];
+    float radius;
 
-    float f1, f2, f3, f4;
-    uint32_t d1, d2, d3, d4;
+    // Check that the neighborhood is not bigger than the object itself 
+    if (radius_neighborhood > model_ppf_map->getCloudDiameter()) {
+        pcl::console::print_warn(stderr, "Warning: neighborhood radius bigger than the object diameter\n");
+        radius = model_ppf_map->getCloudDiameter();
+    } else {
+        radius = radius_neighborhood;
+    }
 
     const auto& ref_point = cloud->at(point_index);
     const auto& ref_normal = cloud_normals->at(point_index);
@@ -70,7 +86,7 @@ int ppfmap::PPFMatch<PointT, NormalT>::findBestMatch(
     std::vector<float> distances;
     pcl::KdTreeFLANN<PointT> kdtree;
     kdtree.setInputCloud(cloud);
-    kdtree.radiusSearch(ref_point, radius_neighborhood, indices, distances);
+    kdtree.radiusSearch(ref_point, radius, indices, distances);
 
     thrust::host_vector<uint32_t> hash_list;
     thrust::host_vector<float> alpha_s_list;
