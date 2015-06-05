@@ -71,13 +71,13 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
     Eigen::Affine3f& trans, 
     pcl::Correspondences& correspondences) {
 
-    float radius = model_ppf_map->getCloudDiameter() / 2.0f;
+    float radius = model_ppf_map->getCloudDiameter() * 0.6f;
     std::vector<Pose> pose_vector;
 
     int dummy = 0;
     for (std::size_t i = 0; i < cloud->size(); i++) {
 
-        if (dummy % 50 == 0) {
+        if (dummy % 10 == 0) {
 
         const auto& point = cloud->at(i);
         const auto& normal = normals->at(i);
@@ -185,8 +185,8 @@ template <typename PointT, typename NormalT>
 bool ppfmap::PPFMatch<PointT, NormalT>::posesWithinErrorBounds(
     const Eigen::Affine3f& pose1, const Eigen::Affine3f& pose2) {
 
-    const float clustering_position_diff_threshold_ = 0.1f;
-    const float clustering_rotation_diff_threshold_ = 12.0f / 180.0f * static_cast<float>(M_PI);
+    const float clustering_position_diff_threshold_ = 0.7f;
+    const float clustering_rotation_diff_threshold_ = 30.0f / 180.0f * static_cast<float>(M_PI);
 
     // Translation difference.
     float position_diff = (pose1.translation() - pose2.translation()).norm();

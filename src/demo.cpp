@@ -40,63 +40,67 @@ int main(int argc, char *argv[]) {
     //  Load the point clouds of the model and the scene
     // ========================================================================
 
-    pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
-    pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
-
     /*
-     *pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
-     *pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
+     *pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
+     *pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
      */
 
-    // ========================================================================
-    //  Compute normals
-    // ========================================================================
-    
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    ne.setInputCloud(model);
-    ne.setSearchMethod(tree);
-    ne.setRadiusSearch(0.03f);
-    ne.compute(*model_normals);
-    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
+    pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
 
-    ne.setInputCloud(scene);
-    ne.setSearchMethod(tree);
-    ne.setRadiusSearch(0.03f);
-    ne.compute(*scene_normals);
-    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
-
-    // ========================================================================
-    //  Downsample the clouds
-    // ========================================================================
-    
-    pcl::VoxelGrid<pcl::PointNormal> sor;
-    sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.01f, 0.01f, 0.01f);
-    sor.filter(*model_downsampled);
-
-    sor.setInputCloud(scene_with_normals);
-    sor.setLeafSize(0.01f, 0.01f, 0.01f);
-    sor.filter(*scene_downsampled);
-
+/*
+ *    // ========================================================================
+ *    //  Compute normals
+ *    // ========================================================================
+ *    
+ *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+ *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+ *    ne.setInputCloud(model);
+ *    ne.setSearchMethod(tree);
+ *    ne.setRadiusSearch(0.03f);
+ *    ne.compute(*model_normals);
+ *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+ *
+ *    ne.setInputCloud(scene);
+ *    ne.setSearchMethod(tree);
+ *    ne.setRadiusSearch(0.03f);
+ *    ne.compute(*scene_normals);
+ *    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
+ *
+ *    // ========================================================================
+ *    //  Downsample the clouds
+ *    // ========================================================================
+ *    
+ *    pcl::VoxelGrid<pcl::PointNormal> sor;
+ *    sor.setInputCloud(model_with_normals);
+ *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
+ *    sor.filter(*model_downsampled);
+ *
+ *    sor.setInputCloud(scene_with_normals);
+ *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
+ *    sor.filter(*scene_downsampled);
+ *
+ */
 
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -4.0f;
+
+    float theta = static_cast<float>(M_PI) / 4.0f;
+    trans(0,0) = cos (theta);
+    trans(0,1) = -sin(theta);
+    trans(1,0) = sin (theta);
+    trans(1,1) = cos (theta);
+
     pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
 
     // ========================================================================
     //  Compute the model's ppfs
     // ========================================================================
 
-    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(0.01f, 24.0f / 180.0f * static_cast<float>(M_PI));
+    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(0.005f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setModelCloud(model_downsampled, model_downsampled);
 
-    // ========================================================================
-    //  Find correspondences
-    // ========================================================================
-
     pcl::StopWatch timer;
-
     timer.reset();
 
     Eigen::Affine3f T;
