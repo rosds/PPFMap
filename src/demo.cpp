@@ -2,6 +2,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/correspondence.h>
+#include <pcl/common/time.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/common_headers.h>
 #include <pcl/features/normal_3d.h>
@@ -9,9 +10,11 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/utility.hpp>
+/*
+ *#include <boost/archive/text_iarchive.hpp>
+ *#include <boost/serialization/vector.hpp>
+ *#include <boost/serialization/utility.hpp>
+ */
 
 #include <PPFMap/PPFMatch.h>
 
@@ -28,8 +31,8 @@ struct Pose {
 inline bool posesWithinErrorBounds(
     const Eigen::Affine3f& pose1, const Eigen::Affine3f& pose2) {
 
-    const float clustering_position_diff_threshold_ = 0.7f;
-    const float clustering_rotation_diff_threshold_ = 30.0f / 180.0f * static_cast<float>(M_PI);
+    const float clustering_position_diff_threshold_ = 0.1f;
+    const float clustering_rotation_diff_threshold_ = 12.0f / 180.0f * static_cast<float>(M_PI);
 
     // Translation difference.
     float position_diff = (pose1.translation() - pose2.translation()).norm();
@@ -45,6 +48,7 @@ inline bool posesWithinErrorBounds(
 
 int main(int argc, char *argv[]) {
     char name[1024];
+    const float neighborhood_radius = 0.1f;
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr model(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::PointCloud<pcl::PointXYZ>::Ptr scene(new pcl::PointCloud<pcl::PointXYZ>());
@@ -62,50 +66,45 @@ int main(int argc, char *argv[]) {
     //  Load the point clouds of the model and the scene
     // ========================================================================
 
-/*
- *    pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
- *
- *    pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
- */
+    pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
+    pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
-    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
-    pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
+    /*
+     *pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
+     *pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
+     */
 
+    // ========================================================================
+    //  Compute normals
+    // ========================================================================
+    
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+    ne.setInputCloud(model);
+    ne.setSearchMethod(tree);
+    ne.setRadiusSearch(0.03f);
+    ne.compute(*model_normals);
+    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
 
+    ne.setInputCloud(scene);
+    ne.setSearchMethod(tree);
+    ne.setRadiusSearch(0.03f);
+    ne.compute(*scene_normals);
+    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
 
-/*
- *    // ========================================================================
- *    //  Compute normals
- *    // ========================================================================
- *    
- *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
- *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
- *    ne.setInputCloud(model);
- *    ne.setSearchMethod(tree);
- *    ne.setRadiusSearch(0.03f);
- *    ne.compute(*model_normals);
- *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
- *
- *    ne.setInputCloud(scene);
- *    ne.setSearchMethod(tree);
- *    ne.setRadiusSearch(0.03f);
- *    ne.compute(*scene_normals);
- *    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
- *
- *    // ========================================================================
- *    //  Downsample the clouds
- *    // ========================================================================
- *    
- *    pcl::VoxelGrid<pcl::PointNormal> sor;
- *    sor.setInputCloud(model_with_normals);
- *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
- *    sor.filter(*model_downsampled);
- *
- *    sor.setInputCloud(scene_with_normals);
- *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
- *    sor.filter(*scene_downsampled);
- *
- */
+    // ========================================================================
+    //  Downsample the clouds
+    // ========================================================================
+    
+    pcl::VoxelGrid<pcl::PointNormal> sor;
+    sor.setInputCloud(model_with_normals);
+    sor.setLeafSize(0.01f, 0.01f, 0.01f);
+    sor.filter(*model_downsampled);
+
+    sor.setInputCloud(scene_with_normals);
+    sor.setLeafSize(0.01f, 0.01f, 0.01f);
+    sor.filter(*scene_downsampled);
+
 
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -4.0f;
@@ -117,9 +116,7 @@ int main(int argc, char *argv[]) {
     // ========================================================================
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(24.0f / 180.0f * static_cast<float>(M_PI), 0.01f);
-    ppf_matching.setModelPointCloud(model_downsampled);
-    ppf_matching.setModelNormals(model_downsampled);
-    ppf_matching.initPPFSearchStruct();
+    ppf_matching.setModelCloud(model_downsampled, model_downsampled);
 
     // ========================================================================
     //  Find correspondences
@@ -129,6 +126,10 @@ int main(int argc, char *argv[]) {
 
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
 
+    pcl::StopWatch timer;
+
+    timer.reset();
+
     int dummy = 0;
     for (size_t i = 0; i < scene_downsampled->size(); i++) {
         if (dummy % 10 == 0) {
@@ -137,13 +138,15 @@ int main(int argc, char *argv[]) {
             if (!pcl::isFinite(scene_point)) continue;
 
             Eigen::Affine3f pose;
-            int j = ppf_matching.findBestMatch(i, scene_downsampled, scene_downsampled, 0.4f, pose);
+            int j = ppf_matching.findBestMatch(i, scene_downsampled, scene_downsampled, neighborhood_radius, pose);
             corr->push_back(pcl::Correspondence(i, j, 0.0f));
 
             pose_vector.push_back(Pose(pose, pcl::Correspondence(i, j, 0.0f)));
         }
         dummy++;
     }
+
+    std::cout << "Correspondences search: " << timer.getTimeSeconds() << std::endl;
 
 /*
  *    std::vector<std::pair<int, int> > groundtruth_vector;
@@ -213,7 +216,12 @@ int main(int argc, char *argv[]) {
         auto& scene_point = scene_downsampled->at(pose.corr.index_query);
         auto& model_point = model_downsampled->at(pose.corr.index_match);
         viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
+
+        sprintf(name, "sphere_%d", pose.corr.index_query);    
+        //viewer->addSphere(scene_point, neighborhood_radius, name);
     }
+
+    //viewer->setRepresentationToWireframeForAllActors();
 
     while (!viewer->wasStopped()) {
         viewer->spinOnce();

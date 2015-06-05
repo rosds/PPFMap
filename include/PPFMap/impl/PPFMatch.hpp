@@ -1,31 +1,47 @@
 #include <PPFMap/PPFMatch.h>
 
+
+/** \brief Construct the PPF search structures for the model cloud.
+ *  
+ *  The model cloud contains the information about the object that is going 
+ *  to be detected in the scene cloud. The necessary information to build 
+ *  the search structure are the points and normals from the object.
+ *
+ *  \param[in] model Point cloud containing the model object.
+ *  \param[in] normals Cloud with the normals of the object.
+ */
 template <typename PointT, typename NormalT>
-void ppfmap::PPFMatch<PointT, NormalT>::initPPFSearchStruct() {
+void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
+    const PointCloudPtr model, const NormalsPtr normals)  {
+
+    model_ = model;
+    normals_ = normals;
 
     const std::size_t number_of_points = model_->size();
 
-    std::unique_ptr<float[]> points(new float[3 * number_of_points]);
-    std::unique_ptr<float[]> normals(new float[3 * number_of_points]);
+    std::unique_ptr<float[]> points_array(new float[3 * number_of_points]);
+    std::unique_ptr<float[]> normals_array(new float[3 * number_of_points]);
 
     for (int i = 0; i < number_of_points; i++) {
         const auto& point = model_->at(i); 
         const auto& normal = normals_->at(i); 
 
-        points[i * 3 + 0] = point.x;
-        points[i * 3 + 1] = point.y;
-        points[i * 3 + 2] = point.z;
+        points_array[i * 3 + 0] = point.x;
+        points_array[i * 3 + 1] = point.y;
+        points_array[i * 3 + 2] = point.z;
 
-        normals[i * 3 + 0] = normal.normal_x;
-        normals[i * 3 + 1] = normal.normal_y;
-        normals[i * 3 + 2] = normal.normal_z;
+        normals_array[i * 3 + 0] = normal.normal_x;
+        normals_array[i * 3 + 1] = normal.normal_y;
+        normals_array[i * 3 + 2] = normal.normal_z;
     }
 
-    model_ppf_map = cuda::setPPFMap(points.get(), 
-                                    normals.get(), 
+    model_ppf_map = cuda::setPPFMap(points_array.get(), 
+                                    normals_array.get(), 
                                     number_of_points,
                                     discretization_distance,
                                     discretization_angle);
+
+    model_map_initialized = true;
 }
 
 

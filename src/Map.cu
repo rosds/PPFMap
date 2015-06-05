@@ -96,11 +96,10 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
 
         ppfmap::getAlignmentToX(point_position, point_normal, &affine);
 
-        ppfmap::PPFEstimationKernel<pcl::cuda::Device> 
-            ppfe(point_position, point_normal, i,
-                 discretization_distance,
-                 discretization_angle,
-                 affine);
+        ppfmap::PPFEstimationKernel ppfe(point_position, point_normal, i,
+                                         discretization_distance,
+                                         discretization_angle,
+                                         affine);
 
         thrust::transform(d_cloud.zip_begin(), d_cloud.zip_end(),
                           d_normals.zip_begin(),

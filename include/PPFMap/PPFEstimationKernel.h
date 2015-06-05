@@ -8,7 +8,6 @@ __constant__ float affine[12];
 
 namespace ppfmap {
 
-    template <template <typename> class Storage>
     struct PPFEstimationKernel {
     
         const float3 ref_point;
