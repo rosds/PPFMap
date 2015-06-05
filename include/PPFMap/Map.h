@@ -6,6 +6,7 @@
 #include <thrust/sort.h>
 #include <thrust/scan.h>
 #include <thrust/binary_search.h>
+#include <thrust/transform_reduce.h>
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/zip_iterator.h>
 
@@ -56,6 +57,7 @@ private:
     const float discretization_angle;
 
     std::size_t max_votes;
+    float model_diameter;
 
     thrust::device_vector<uint64_t> ppf_codes;
     thrust::device_vector<uint32_t> hash_keys;

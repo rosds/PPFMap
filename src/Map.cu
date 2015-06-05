@@ -2,7 +2,24 @@
 #include <PPFMap/PPFEstimationKernel.h>
 
 
-struct extract_hash_key : thrust::unary_function<uint64_t, uint32_t> {
+struct compute_distance {
+
+    const float3 ref_point;
+
+    compute_distance(const float3 point) : ref_point(point) {}
+
+    template <typename T>
+    __host__ __device__ float operator()(const T &pos) const {
+        float3 point = make_float3(thrust::get<0>(pos),
+                                   thrust::get<1>(pos),
+                                   thrust::get<2>(pos));
+
+        return sqrt(ppfmap::dot(ref_point, point));
+    }
+};
+
+
+struct extract_hash_key : public thrust::unary_function<uint64_t, uint32_t> {
     __host__ __device__
     uint32_t operator()(const uint64_t ppf_code) const {
         return static_cast<uint32_t>(ppf_code >> 32);
@@ -10,7 +27,7 @@ struct extract_hash_key : thrust::unary_function<uint64_t, uint32_t> {
 };
 
 
-struct copy_element_by_index : thrust::unary_function<uint32_t, uint32_t> {
+struct copy_element_by_index : public thrust::unary_function<uint32_t, uint32_t> {
     const uint32_t* ppf_index_ptr;
 
     copy_element_by_index(thrust::device_vector<uint32_t> const& vec) 
@@ -64,6 +81,12 @@ struct write_votes {
 };
 
 
+/** \brief Computes the PPF features for the input cloud.
+ *  \param[in] cloud Pointer to the point cloud.
+ *  \param[in] normals Pointer to the normals of the cloud.
+ *  \param[in] disc_dist Discretization factor for pair distance.
+ *  \param[in] disc_angle Discretization factor for angles.
+ */
 ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                  const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr normals,
                  const float disc_dist,
@@ -71,8 +94,8 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
     : discretization_distance(disc_dist)
     , discretization_angle(disc_angle) {
 
-    const size_t number_of_points = cloud->size();
-    const size_t number_of_pairs = number_of_points * number_of_points;
+    const std::size_t number_of_points = cloud->size();
+    const std::size_t number_of_pairs = number_of_points * number_of_points;
 
     float affine[12];
 
@@ -83,6 +106,8 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
     d_normals << *normals;
 
     ppf_codes.resize(number_of_pairs);
+
+    float max_distance = 0.0f;
 
     for (int i = 0; i < number_of_points; i++) {
     
@@ -101,11 +126,24 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                                          discretization_angle,
                                          affine);
 
+        // Compute the largest distance between this group of pairs
+        float max_pair_dist = thrust::transform_reduce(d_cloud.zip_begin(),
+                                                       d_cloud.zip_end(),
+                                                       compute_distance(point_position),
+                                                       0.0f,
+                                                       thrust::maximum<float>());
+
+        if (max_distance < max_pair_dist) {
+            max_distance = max_pair_dist; 
+        }
+
         thrust::transform(d_cloud.zip_begin(), d_cloud.zip_end(),
                           d_normals.zip_begin(),
-                          ppf_codes.begin() + i * cloud->size(),
+                          ppf_codes.begin() + i * number_of_points,
                           ppfe);
     }
+    
+    model_diameter = max_distance;
 
     thrust::sort(ppf_codes.begin(), ppf_codes.end());
 
