@@ -121,6 +121,11 @@ int main(int argc, char *argv[]) {
         viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
     }
 
+    pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed(new pcl::PointCloud<pcl::PointNormal>());
+
+    pcl::transformPointCloud(*model_downsampled, *model_transformed, T);
+    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
+    viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");
 
     while (!viewer->wasStopped()) {
         viewer->spinOnce();
