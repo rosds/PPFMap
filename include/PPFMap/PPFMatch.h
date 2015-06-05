@@ -13,6 +13,19 @@
 
 namespace ppfmap {
 
+
+/** \brief Represents a pose supported by a correspondence.
+ */
+struct Pose {
+    Eigen::Affine3f t;
+    pcl::Correspondence c;
+
+    Pose(const Eigen::Affine3f &trans, const pcl::Correspondence &corr)
+        : t(trans)
+        , c(corr) {}
+};
+
+
 /** \brief Implements the PPF features matching between two point clouds.
  *
  *  \tparam PointT Point type of the clouds.
@@ -61,9 +74,27 @@ public:
                       const PointCloudPtr cloud,
                       const NormalsPtr cloud_normals,
                       const float neighborhood_radius,
+                      int& m_idx,
                       Eigen::Affine3f& pose);
 
+
+    /** \brief Search of the model in an scene cloud and returns the 
+     * correspondences and the transformation to the scene.
+     *
+     *  \param[in] cloud Point cloud of the scene.
+     *  \param[in] normals Normals of the scene cloud.
+     *  \param[out] trans Affine transformation from to model to the scene.
+     *  \param[out] correspondence Supporting correspondences from the scene to 
+     *  the model.
+     */
+    void detect(const PointCloudPtr cloud, const NormalsPtr normals, 
+                Eigen::Affine3f& trans, 
+                pcl::Correspondences& correspondences);
+
 private:
+
+    bool posesWithinErrorBounds(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
+    void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
     const float discretization_distance;
