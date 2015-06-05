@@ -24,6 +24,11 @@ namespace ppfmap {
     }
 
     __device__ __host__
+    inline float norm(const float3& v) {
+        return sqrt(ppfmap::dot(v, v));
+    }
+
+    __device__ __host__
     inline uint32_t hashPPF(uint32_t dist, 
                             uint32_t a1, 
                             uint32_t a2, 
@@ -46,7 +51,7 @@ namespace ppfmap {
                                p.y - r.y,
                                p.z - r.z);
 
-        const float norm = sqrt(ppfmap::dot(d, d));
+        const float norm = ppfmap::norm(d);
 
         d.x /= norm;
         d.y /= norm;

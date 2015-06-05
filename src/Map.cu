@@ -14,8 +14,7 @@ struct compute_distance {
                                    thrust::get<1>(pos),
                                    thrust::get<2>(pos));
 
-        float3 d = point - ref_point;
-        return sqrt(ppfmap::dot(d, d));
+        return ppfmap::norm(point - ref_point);
     }
 };
 

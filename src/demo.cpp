@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include <pcl/common/geometry.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/correspondence.h>
 #include <pcl/common/time.h>
@@ -109,7 +110,6 @@ int main(int argc, char *argv[]) {
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -4.0f;
     pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
-
 
     // ========================================================================
     //  Compute the model's ppfs
