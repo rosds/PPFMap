@@ -24,7 +24,11 @@ public:
 
     /** \brief Empty constructor.
      */
-    Map() : discretization_distance(0.0f) , discretization_angle(0.0f) {}
+    Map() 
+        : discretization_distance(0.0f)
+        , discretization_angle(0.0f)
+        , max_votes(0) 
+        , cloud_diameter(0.0f) {}
 
     /** \brief Computes the PPF features for the input cloud.
      *  \param[in] cloud Pointer to the point cloud.
@@ -51,13 +55,18 @@ public:
                          const thrust::host_vector<float> alpha_s_list,
                          int& m_idx, float& alpha);
 
+    /** \brief Get lastest pair distance possible in the cloud.
+     *  \return The largest distance between pairs in the cloud.
+     */
+    float getCloudDiameter() { return cloud_diameter; }
+
 private:
     
     const float discretization_distance;
     const float discretization_angle;
 
     std::size_t max_votes;
-    float model_diameter;
+    float cloud_diameter;
 
     thrust::device_vector<uint64_t> ppf_codes;
     thrust::device_vector<uint32_t> hash_keys;

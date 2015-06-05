@@ -118,5 +118,7 @@ int ppfmap::PPFMatch<PointT, NormalT>::findBestMatch(
 
     pose = Tsg.inverse() * Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitX()) * Tmg;
 
+    std::cout << "model diameter " << model_ppf_map->getCloudDiameter() << std::endl;
+
     return index;
 }

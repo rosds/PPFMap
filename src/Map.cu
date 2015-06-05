@@ -14,7 +14,8 @@ struct compute_distance {
                                    thrust::get<1>(pos),
                                    thrust::get<2>(pos));
 
-        return sqrt(ppfmap::dot(ref_point, point));
+        float3 d = point - ref_point;
+        return sqrt(ppfmap::dot(d, d));
     }
 };
 
@@ -143,7 +144,7 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                           ppfe);
     }
     
-    model_diameter = max_distance;
+    cloud_diameter = max_distance;
 
     thrust::sort(ppf_codes.begin(), ppf_codes.end());
 
