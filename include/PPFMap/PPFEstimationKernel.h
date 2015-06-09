@@ -8,6 +8,17 @@ __constant__ float affine[12];
 
 namespace ppfmap {
 
+
+    /** \brief Functor for calcukating the PPF Features and also the alpha 
+     * angle.
+     *
+     *  This functor takes a particular reference point in the cloud and with 
+     *  the operator(), it computes the PPF discretized feture and also the 
+     *  alpha angle to a particular point.
+     *
+     *  Using a thrust::transform function, this functor is used to compute all 
+     *  the ppf features in the cloud in parallel.
+     */
     struct PPFEstimationKernel {
     
         const float3 ref_point;
@@ -16,6 +27,15 @@ namespace ppfmap {
         const float discretization_distance;
         const float discretization_angle;
 
+        /** \brief Constructor.
+         *  \param[in] position Reference point position.
+         *  \param[in] normal Reference point normal.
+         *  \param[in] index Point index in the cloud.
+         *  \param[in] disc_dist Discretization distance.
+         *  \param[in] disc_angle Discretization angle.
+         *  \param[in] transformation Pointer to the affine transformation that 
+         *  aligns the pointes with respect to the reference point's normal.
+         */
         PPFEstimationKernel(const float3 position,
                             const float3 normal,
                             const int index,
@@ -50,6 +70,9 @@ namespace ppfmap {
                                                 discretization_distance,
                                                 discretization_angle);
 
+            uint16_t id = static_cast<uint16_t>(point_index);
+
+            // Compute the alpha angle
             float d_y = point.x * affine[4] + 
                         point.y * affine[5] + 
                         point.z * affine[6] + affine[7];
@@ -57,7 +80,6 @@ namespace ppfmap {
                         point.y * affine[9] + 
                         point.z * affine[10] + affine[11];
 
-            uint16_t id = static_cast<uint16_t>(point_index);
             uint16_t alpha = static_cast<int16_t>(atan2f(-d_z, d_y) / discretization_angle);
             
             return (static_cast<uint64_t>(hk) << 32) | 

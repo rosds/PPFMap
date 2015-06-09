@@ -17,6 +17,17 @@
 
 namespace ppfmap {
 
+
+/** \brief Contains the search structures for PPF Features of a particular 
+ * model cloud.
+ *
+ *  This class computes the PPF features from a specified model cloud and 
+ *  builds the corresponding search structures. These search structures remain 
+ *  in the memory from the CUDA Device. It is important to keep in mind that 
+ *  these structures grow quadratically with respect to the number of points in 
+ *  the model cloud. In other words, for an N size cloud, there are NxN PPF 
+ *  features to compute and save.
+ */
 class Map {
 public:
     typedef boost::shared_ptr<Map> Ptr;
