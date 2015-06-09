@@ -11,3 +11,27 @@ This project may compu
 + Point Cloud Library (PCL 1.7) : built with CUDA support.
 + Eigen library 3.0
 + CUDA 5.0
+
+### Compile and run
+
+Before compiling the project, check first the cuda capability of your device. 
+You can set the specific capability on the `CMakeLists.txt` file, in the 
+**CUDA__NVCC_FLAGS**.
+
+```bash
+    mkdir build
+    cd build
+    cmake ..
+    make
+    ./demo
+```
+
+### Documentation
+
+Doxygen is used for the documentation. To generate it, simply execute the 
+following in the `build` directory:
+
+```bash
+    make doc
+```
+

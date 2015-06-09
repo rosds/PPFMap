@@ -5,18 +5,18 @@ project (PPFMap)
 set (BUILD_TYPE Release)
 
 find_package (CUDA REQUIRED)
-set(CUDA_NVCC_FLAGS " -arch=sm_30 ")
+set(CUDA_NVCC_FLAGS " -arch=sm_10 ")
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
-##
-# Point Cloud Library
-##
-find_package (PCL REQUIRED)
+# Point Cloud Library (PCL)
+find_package (PCL 1.7 REQUIRED)
 include_directories (${PCL_INCLUDE_DIRS})
 
-##
-#   Test for C++11 support
-##
+
+##############################################################################
+#   Check for C++11 compiler support                                         #
+##############################################################################
+
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR CMAKE_COMPILER_IS_GNUCXX)
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag(--std=c++11 SUPPORTS_STD_CXX11)
@@ -54,3 +54,19 @@ cuda_add_library(ppfmap SHARED ${CPP_FILES} ${HPP_FILES} ${CU_FILES})
 
 cuda_add_executable(demo ${DEMO_FILES})
 target_link_libraries (demo ppfmap ${PCL_LIBRARIES})
+
+
+##############################################################################
+#   Doxygen documentation                                                    #
+##############################################################################
+
+# adds custom command 'make doc' to generate the documentation.
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in
+        ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(doc
+        ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating API documentation with Doxygen" VERBATIM)
+endif(DOXYGEN_FOUND)
