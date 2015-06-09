@@ -2,6 +2,7 @@
 #define PPFMAP_UTILS_HH__
 
 #include <cuda_runtime.h>
+#include <pcl/cuda/pcl_cuda_base.h>
 
 
 namespace ppfmap {
@@ -28,24 +29,26 @@ namespace ppfmap {
         return sqrt(ppfmap::dot(v, v));
     }
 
+    /** \brief Concatenate each discretized component of the PPF vector into a 
+     * 32 bit unsigned int.
+     *  \param[in] f1 First PPF component.
+     *  \param[in] f2 Second PPF component.
+     *  \param[in] f3 Third PPF component.
+     *  \param[in] f4 Fourth PPF component.
+     *  \return Unsigned int with the concatenated components
+     */
     __device__ __host__
-    inline uint32_t hashPPF(uint32_t dist, 
-                            uint32_t a1, 
-                            uint32_t a2, 
-                            uint32_t a3) {
-        return dist << 24 | a1 << 16 | a2 << 8 | a3;
+    inline uint32_t hashPPF(uint32_t f1, uint32_t f2, uint32_t f3, uint32_t f4) {
+        return f1 << 24 | f2 << 16 | f3 << 8 | f4;
     }
 
     __device__ __host__
-    inline void computePPFFeature(const float3& r,
-                                  const float3& r_n,
-                                  const float3& p,
-                                  const float3& p_n,
-                                  float &f1, 
-                                  float &f2, 
-                                  float &f3, 
-                                  float &f4) {
+    inline uint32_t computePPFFeatureHash(const float3& r, const float3& r_n,
+                                          const float3& p, const float3& p_n,
+                                          const float disc_dist,
+                                          const float disc_angle) {
 
+        float f1, f2, f3, f4;
         float3 d = make_float3(p.x - r.x,
                                p.y - r.y,
                                p.z - r.z);
@@ -60,17 +63,7 @@ namespace ppfmap {
         f2 = acos(ppfmap::dot(d, r_n));
         f3 = acos(ppfmap::dot(d, p_n));
         f4 = acos(ppfmap::dot(p_n, r_n));
-    }
 
-    __device__ __host__
-    inline uint32_t computePPFFeatureHash(const float3& r,
-                                          const float3& r_n,
-                                          const float3& p,
-                                          const float3& p_n,
-                                          const float disc_dist,
-                                          const float disc_angle) {
-        float f1, f2, f3, f4;
-        computePPFFeature(r, r_n, p, p_n, f1, f2, f3, f4);
         uint32_t d1 = static_cast<uint32_t>(f1 / disc_dist);
         uint32_t d2 = static_cast<uint32_t>(f2 / disc_angle);
         uint32_t d3 = static_cast<uint32_t>(f3 / disc_angle);
@@ -87,6 +80,7 @@ namespace ppfmap {
      *  \param[out] affine Affine trasformation to align the 
      *  normal.
      */
+    __host__ __device__
     inline void getAlignmentToX(const float3 point,
                                 const float3 normal,
                                 float (*affine)[12]) {
@@ -144,6 +138,50 @@ namespace ppfmap {
 
     }
 
+
+    /** \brief Functor structure used to compute the distance between two 
+     * points.
+     */
+    struct compute_distance {
+        const float3 ref_point;
+
+        /** \brief Constructor.
+         *  \param[in] point The point to use as reference for computing the 
+         *  distance.
+         */
+        compute_distance(const float3 point) : ref_point(point) {}
+
+        template <typename Point>
+        __host__ __device__ 
+        float operator()(const Point &pos) const {
+            float3 point = make_float3(thrust::get<0>(pos),
+                                       thrust::get<1>(pos),
+                                       thrust::get<2>(pos));
+
+            return ppfmap::norm(point - ref_point);
+        }
+    };
+
+
+    /** \brief Compute the farthest distance between a point and the rest of 
+     * the point cloud.
+     *  \param[in] point The point from which to look for the farthest 
+     *  distance.
+     *  \param[in] cloud Pointer to the cloud with the rest of the points.
+     *  \return The greatest distance between the point and the rest of points 
+     *  in the cloud.
+     */
+    template <template <typename> class Storage>
+    inline float maxDistanceToPoint(
+        const float3 point, 
+        const boost::shared_ptr<pcl::cuda::PointCloudSOA<Storage> >& cloud) {
+    
+        return thrust::transform_reduce(cloud->zip_begin(), cloud->zip_end(),
+                                        compute_distance(point), 0.0f,
+                                        thrust::maximum<float>());
+    
+    }
 } // namespace ppfmap
 
 #endif // PPFMAP_UTILS_HH__
+

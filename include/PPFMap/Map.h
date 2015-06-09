@@ -12,7 +12,6 @@
 
 #include <pcl/cuda/pcl_cuda_base.h>
 
-
 #include <PPFMap/utils.h>
 
 

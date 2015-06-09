@@ -181,12 +181,15 @@ int ppfmap::PPFMatch<PointT, NormalT>::findBestMatch(
 }
 
 
+/** \brief True if poses are similar given the translation and rotation 
+ * thresholds.
+ *  \param[in] t1 First pose.
+ *  \param[in] t2 Second pose.
+ *  \return True if the transformations are similar
+ */
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::posesWithinErrorBounds(
+bool ppfmap::PPFMatch<PointT, NormalT>::similarPoses(
     const Eigen::Affine3f& pose1, const Eigen::Affine3f& pose2) {
-
-    const float clustering_position_diff_threshold_ = 0.7f;
-    const float clustering_rotation_diff_threshold_ = 30.0f / 180.0f * static_cast<float>(M_PI);
 
     // Translation difference.
     float position_diff = (pose1.translation() - pose2.translation()).norm();
@@ -195,8 +198,8 @@ bool ppfmap::PPFMatch<PointT, NormalT>::posesWithinErrorBounds(
     Eigen::AngleAxisf rotation_diff_mat(pose1.rotation().inverse() * pose2.rotation());
     float rotation_diff = fabsf(rotation_diff_mat.angle());
 
-    return position_diff < clustering_position_diff_threshold_ &&
-           rotation_diff < clustering_rotation_diff_threshold_;
+    return position_diff < translation_threshold &&
+           rotation_diff < rotation_threshold;
 }
 
 
@@ -216,7 +219,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
 
         cluster_idx = 0;
         for (auto& cluster : pose_clusters) {
-            if (posesWithinErrorBounds(pose.t, cluster.front().t)) {
+            if (similarPoses(pose.t, cluster.front().t)) {
                 found_cluster = true;
                 cluster.push_back(pose);
                 cluster_votes[cluster_idx].first++;

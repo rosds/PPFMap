@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
  *    sor.setInputCloud(scene_with_normals);
  *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
  *    sor.filter(*scene_downsampled);
- *
  */
+
 
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -4.0f;

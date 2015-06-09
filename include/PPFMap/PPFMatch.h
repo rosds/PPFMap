@@ -38,12 +38,14 @@ public:
     typedef typename pcl::PointCloud<NormalT>::Ptr NormalsPtr;
 
     /** \brief Constructor for the 
-     *  \param disc_dist Discretization distance for the point pairs.
-     *  \param disc_angle Discretization angle for the ppf features.
+     *  \param[in] disc_dist Discretization distance for the point pairs.
+     *  \param[in] disc_angle Discretization angle for the ppf features.
      */
     PPFMatch(const float disc_dist, const float disc_angle)
         : discretization_distance(disc_dist)
         , discretization_angle(disc_angle)
+        , translation_threshold(0.5f)
+        , rotation_threshold(30.0f / 180.0f * static_cast<float>(M_PI))
         , model_map_initialized(false) {}
 
     /** \brief Default destructor **/
@@ -68,6 +70,8 @@ public:
      *  \param[in] cloud_normals The pointer to the normals of the cloud.
      *  \param[in] neighborhood_radius The radius to consider for building 
      *  pairs around the reference point.
+     *  \param[out] m_idx Matching model index
+     *  \param[out] pose Affine transformation supported by the match
      *  \return The index of the model point with the higher number of votes.
      */
     int findBestMatch(const int point_index,
@@ -76,7 +80,6 @@ public:
                       const float neighborhood_radius,
                       int& m_idx,
                       Eigen::Affine3f& pose);
-
 
     /** \brief Search of the model in an scene cloud and returns the 
      * correspondences and the transformation to the scene.
@@ -93,16 +96,24 @@ public:
 
 private:
 
-    bool posesWithinErrorBounds(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
+    /** \brief True if poses are similar given the translation and rotation 
+     * thresholds.
+     *  \param[in] t1 First pose.
+     *  \param[in] t2 Second pose.
+     *  \return True if the transformations are similar
+     */
+    bool similarPoses(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
+
     void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
     const float discretization_distance;
     const float discretization_angle;
+    const float translation_threshold;
+    const float rotation_threshold;
 
     PointCloudPtr model_;
     NormalsPtr normals_;
-
     ppfmap::Map::Ptr model_ppf_map;
 };
 

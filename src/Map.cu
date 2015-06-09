@@ -2,23 +2,6 @@
 #include <PPFMap/PPFEstimationKernel.h>
 
 
-struct compute_distance {
-
-    const float3 ref_point;
-
-    compute_distance(const float3 point) : ref_point(point) {}
-
-    template <typename T>
-    __host__ __device__ float operator()(const T &pos) const {
-        float3 point = make_float3(thrust::get<0>(pos),
-                                   thrust::get<1>(pos),
-                                   thrust::get<2>(pos));
-
-        return ppfmap::norm(point - ref_point);
-    }
-};
-
-
 struct extract_hash_key : public thrust::unary_function<uint64_t, uint32_t> {
     __host__ __device__
     uint32_t operator()(const uint64_t ppf_code) const {
@@ -99,11 +82,13 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
 
     float affine[12];
 
-    pcl::cuda::PointCloudSOA<pcl::cuda::Device> d_cloud;
-    pcl::cuda::PointCloudSOA<pcl::cuda::Device> d_normals;
+    pcl::cuda::PointCloudSOA<pcl::cuda::Device>::Ptr 
+        d_cloud(new pcl::cuda::PointCloudSOA<pcl::cuda::Device>());
+    pcl::cuda::PointCloudSOA<pcl::cuda::Device>::Ptr 
+        d_normals(new pcl::cuda::PointCloudSOA<pcl::cuda::Device>());
 
-    d_cloud << *cloud;
-    d_normals << *normals;
+    *d_cloud << *cloud;
+    *d_normals << *normals;
 
     ppf_codes.resize(number_of_pairs);
 
@@ -126,22 +111,16 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                                          discretization_angle,
                                          affine);
 
-        thrust::transform(d_cloud.zip_begin(), d_cloud.zip_end(),
-                          d_normals.zip_begin(),
+        thrust::transform(d_cloud->zip_begin(), d_cloud->zip_end(),
+                          d_normals->zip_begin(),
                           ppf_codes.begin() + i * number_of_points,
                           ppfe);
 
-        // Compute the largest distance between this group of pairs
-        float max_pair_dist = thrust::transform_reduce(d_cloud.zip_begin(),
-                                                       d_cloud.zip_end(),
-                                                       compute_distance(point_position),
-                                                       0.0f,
-                                                       thrust::maximum<float>());
+        float max_pair_dist = ppfmap::maxDistanceToPoint(point_position, d_cloud);
 
         if (max_distance < max_pair_dist) {
             max_distance = max_pair_dist; 
         }
-
     }
     
     cloud_diameter = max_distance;
