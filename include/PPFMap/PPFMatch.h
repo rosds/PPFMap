@@ -44,8 +44,8 @@ public:
     PPFMatch(const float disc_dist, const float disc_angle)
         : discretization_distance(disc_dist)
         , discretization_angle(disc_angle)
-        , translation_threshold(0.5f)
-        , rotation_threshold(30.0f / 180.0f * static_cast<float>(M_PI))
+        , translation_threshold(0.1f)
+        , rotation_threshold(12.0f / 180.0f * static_cast<float>(M_PI))
         , model_map_initialized(false) {}
 
     /** \brief Default destructor **/
@@ -62,25 +62,6 @@ public:
      */
     void setModelCloud(const PointCloudPtr model, const NormalsPtr normals);
 
-    /** \brief Perform the voting and accumulation of the PPF features in the 
-     * model and returns the model index with the most votes.
-     *
-     *  \param[in] point_index Index of the point.
-     *  \param[in] cloud The pointer to the cloud where the queried point is.
-     *  \param[in] cloud_normals The pointer to the normals of the cloud.
-     *  \param[in] neighborhood_radius The radius to consider for building 
-     *  pairs around the reference point.
-     *  \param[out] m_idx Matching model index
-     *  \param[out] pose Affine transformation supported by the match
-     *  \return The index of the model point with the higher number of votes.
-     */
-    int findBestMatch(const int point_index,
-                      const PointCloudPtr cloud,
-                      const NormalsPtr cloud_normals,
-                      const float neighborhood_radius,
-                      int& m_idx,
-                      Eigen::Affine3f& pose);
-
     /** \brief Search of the model in an scene cloud and returns the 
      * correspondences and the transformation to the scene.
      *
@@ -95,6 +76,27 @@ public:
                 pcl::Correspondences& correspondences);
 
 private:
+
+    /** \brief Perform the voting and accumulation of the PPF features in the 
+     * model and returns the model index with the most votes.
+     *
+     *  \param[in] point_index Index of the point.
+     *  \param[in] cloud The pointer to the cloud where the queried point is.
+     *  \param[in] cloud_normals The pointer to the normals of the cloud.
+     *  \param[in] neighborhood_radius The radius to consider for building 
+     *  pairs around the reference point.
+     *  \param[out] m_idx Matching model index
+     *  \param[out] pose Affine transformation supported by the match
+     *  \return The index of the model point with the higher number of votes.
+     */
+    int getPose(const float3& ref_point,
+                const float3& ref_normal,
+                const std::vector<int>& indices,
+                const PointCloudPtr cloud,
+                const NormalsPtr cloud_normals,
+                float affine_s[12],
+                int& m_idx,
+                Eigen::Affine3f& pose);
 
     /** \brief True if poses are similar given the translation and rotation 
      * thresholds.

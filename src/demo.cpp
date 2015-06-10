@@ -1,3 +1,5 @@
+#include <chrono>
+#include <random>
 #include <algorithm>
 
 #include <pcl/common/geometry.h>
@@ -11,11 +13,6 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-/*
- *#include <boost/archive/text_iarchive.hpp>
- *#include <boost/serialization/vector.hpp>
- *#include <boost/serialization/utility.hpp>
- */
 
 #include <PPFMap/PPFMatch.h>
 
@@ -85,11 +82,16 @@ int main(int argc, char *argv[]) {
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -4.0f;
 
-    float theta = static_cast<float>(M_PI) / 4.0f;
-    trans(0,0) = cos (theta);
-    trans(0,1) = -sin(theta);
-    trans(1,0) = sin (theta);
-    trans(1,1) = cos (theta);
+    std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+    Eigen::Matrix3f rot;
+    rot = Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitX()) *
+          Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitY()) *
+          Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitZ());
+
+
+    trans.block<3, 3>(0, 0) = rot;
 
     pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
 
@@ -97,10 +99,14 @@ int main(int argc, char *argv[]) {
     //  Compute the model's ppfs
     // ========================================================================
 
-    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(0.005f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    pcl::StopWatch timer;
+    timer.reset();
+
+    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setModelCloud(model_downsampled, model_downsampled);
 
-    pcl::StopWatch timer;
+    std::cout << "PPF Map creation: " << timer.getTimeSeconds() << "s" <<  std::endl;
+
     timer.reset();
 
     Eigen::Affine3f T;

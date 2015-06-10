@@ -71,8 +71,15 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
     Eigen::Affine3f& trans, 
     pcl::Correspondences& correspondences) {
 
-    float radius = model_ppf_map->getCloudDiameter() * 0.6f;
+    float affine_s[12];
     std::vector<Pose> pose_vector;
+    const float radius = model_ppf_map->getCloudDiameter() * 0.6f;
+
+    std::vector<int> indices;
+    std::vector<float> distances;
+
+    pcl::KdTreeFLANN<PointT> kdtree;
+    kdtree.setInputCloud(cloud);
 
     int dummy = 0;
     for (std::size_t i = 0; i < cloud->size(); i++) {
@@ -84,9 +91,16 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 
         if (!pcl::isFinite(point)) continue;
 
+        getAlignmentToX(ppfmap::pointToFloat3(point), 
+                        ppfmap::normalToFloat3(normal), 
+                        &affine_s);
+
+        kdtree.radiusSearch(point, radius, indices, distances);
+
         int j;
         Eigen::Affine3f pose;
-        findBestMatch(i, cloud, normals, radius, j, pose);
+        getPose(pointToFloat3(point), normalToFloat3(normal),
+                indices, cloud, normals, affine_s, j, pose);
 
         pose_vector.push_back(Pose(pose, pcl::Correspondence(i, j, 0.0f)));
 
@@ -99,65 +113,39 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 
 
 template <typename PointT, typename NormalT>
-int ppfmap::PPFMatch<PointT, NormalT>::findBestMatch(
-    const int point_index,
+int ppfmap::PPFMatch<PointT, NormalT>::getPose(
+    const float3& ref_point,
+    const float3& ref_normal,
+    const std::vector<int>& indices,
     const PointCloudPtr cloud,
-    const NormalsPtr cloud_normals,
-    const float radius_neighborhood,
+    const NormalsPtr normals,
+    float affine_s[12],
     int& m_idx,
     Eigen::Affine3f& pose) {
 
-    float affine_s[12];
     float affine_m[12];
-    float radius;
+    std::size_t n = indices.size();
 
-    // Check that the neighborhood is not bigger than the object itself 
-    if (radius_neighborhood > model_ppf_map->getCloudDiameter()) {
-        pcl::console::print_warn(stderr, "Warning: neighborhood radius bigger than the object diameter\n");
-        radius = model_ppf_map->getCloudDiameter();
-    } else {
-        radius = radius_neighborhood;
-    }
-
-    const auto& ref_point = cloud->at(point_index);
-    const auto& ref_normal = cloud_normals->at(point_index);
-
-    getAlignmentToX(ppfmap::pointToFloat3(ref_point), 
-                    ppfmap::normalToFloat3(ref_normal), 
-                    &affine_s);
-
-    std::vector<int> indices;
-    std::vector<float> distances;
-    pcl::KdTreeFLANN<PointT> kdtree;
-    kdtree.setInputCloud(cloud);
-    kdtree.radiusSearch(ref_point, radius, indices, distances);
-
-    thrust::host_vector<uint32_t> hash_list;
-    thrust::host_vector<float> alpha_s_list;
+    thrust::host_vector<uint32_t> hash_list(n);
+    thrust::host_vector<float> alpha_s_list(n);
 
     // Compute the PPF feature for all the pairs in the neighborhood
-    for (const auto index : indices) {
+    for (int i = 0; i < n; i++) {
+        const int index = indices[i];
 
-        const auto& point = cloud->at(index);
-        const auto& normal = cloud_normals->at(index);
+        const float3& point = ppfmap::pointToFloat3(cloud->at(index));
+        const float3& normal = ppfmap::normalToFloat3(normals->at(index));
 
-        // Transform the point and compute the alpha_s
         float d_y = point.x * affine_s[4] + point.y * affine_s[5] + point.z * affine_s[6] + affine_s[7]; 
         float d_z = point.x * affine_s[8] + point.y * affine_s[9] + point.z * affine_s[10] + affine_s[11]; 
 
-        float alpha_s = atan2f(-d_z, d_y);
-    
-        uint32_t hash_key = computePPFFeatureHash(pointToFloat3(ref_point), 
-                                                  normalToFloat3(ref_normal),
-                                                  pointToFloat3(point), 
-                                                  normalToFloat3(normal),
-                                                  discretization_distance,
-                                                  discretization_angle);
+        alpha_s_list[i] = atan2f(-d_z, d_y);
+        hash_list[i] = computePPFFeatureHash(ref_point, ref_normal,
+                                             point, normal,
+                                             discretization_distance,
+                                             discretization_angle);
 
-        hash_list.push_back(hash_key);
-        alpha_s_list.push_back(alpha_s);
     }
-
 
     int index;
     float alpha;
