@@ -22,42 +22,95 @@ struct copy_element_by_index : public thrust::unary_function<uint32_t, uint32_t>
     }
 };
 
+/*
+ *
+ *struct write_votes {
+ *    const uint64_t* model_ppf_ptr;
+ *    const float discretization_angle;
+ *    uint32_t* votes_ptr;
+ *
+ *    write_votes(thrust::device_vector<uint64_t> const& model_ppf,
+ *                const float disc_angle,
+ *                thrust::device_vector<uint32_t> &votes)
+ *        : model_ppf_ptr(thrust::raw_pointer_cast(model_ppf.data()))
+ *        , discretization_angle(disc_angle)
+ *        , votes_ptr(thrust::raw_pointer_cast(votes.data())) {}
+ *
+ *    template <class Tuple> __device__
+ *    void operator()(Tuple t) {
+ *
+ *        const uint32_t insert_position = thrust::get<0>(t); 
+ *        const bool     key_found = thrust::get<1>(t); 
+ *        const uint32_t ppf_index = thrust::get<2>(t); 
+ *        const uint32_t ppf_count = thrust::get<3>(t); 
+ *        const float alpha_s = thrust::get<4>(t); 
+ *
+ *        if (key_found) {
+ *            for (int vote_idx = 0; vote_idx < ppf_count; vote_idx++) {
+ *
+ *                uint64_t model_ppf_code = model_ppf_ptr[ppf_index + vote_idx];
+ *
+ *                uint16_t model_index = static_cast<uint16_t>(model_ppf_code >> 16 & 0xFFFF);
+ *                float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
+ *
+ *                uint16_t alpha = static_cast<uint16_t>((alpha_m - alpha_s) / discretization_angle);
+ *
+ *                uint32_t vote = static_cast<uint32_t>(model_index) << 16 |
+ *                                static_cast<uint32_t>(alpha);
+ *
+ *                votes_ptr[insert_position + vote_idx] =  vote;
+ *            }
+ *        }
+ *    }
+ *};
+ */
 
-struct write_votes {
-    const uint64_t* model_ppf_ptr;
+struct VotesExtraction {
     const float discretization_angle;
+
+    const float* alpha_s;
+
+    const uint64_t* ppf_codes;
+    const bool* ppf_found;
+    const uint32_t* ppf_index;
+    const uint32_t* ppf_count;
+    const uint32_t* insert;
+
     uint32_t* votes_ptr;
 
-    write_votes(thrust::device_vector<uint64_t> const& model_ppf,
-                const float disc_angle,
-                thrust::device_vector<uint32_t> &votes)
-        : model_ppf_ptr(thrust::raw_pointer_cast(model_ppf.data()))
+    VotesExtraction(const thrust::device_vector<float>& alphas,
+                    const thrust::device_vector<uint64_t>& map_codes,
+                    const thrust::device_vector<bool>& map_found,
+                    const thrust::device_vector<uint32_t>& map_index,
+                    const thrust::device_vector<uint32_t>& map_count,
+                    const thrust::device_vector<uint32_t>& insert_votes,
+                    const float disc_angle,
+                    thrust::device_vector<uint32_t>& votes)
+        : alpha_s(thrust::raw_pointer_cast(alphas.data()))
+        , ppf_codes(thrust::raw_pointer_cast(map_codes.data()))
+        , ppf_found(thrust::raw_pointer_cast(map_found.data()))
+        , ppf_index(thrust::raw_pointer_cast(map_index.data()))
+        , ppf_count(thrust::raw_pointer_cast(map_count.data()))
+        , insert(thrust::raw_pointer_cast(insert_votes.data()))
         , discretization_angle(disc_angle)
         , votes_ptr(thrust::raw_pointer_cast(votes.data())) {}
 
-    template <class Tuple> __device__
-    void operator()(Tuple t) {
+    __device__
+    void operator()(const int i) {
+        if (ppf_found[i]) {
+            for (int vote_idx = 0; vote_idx < ppf_count[i]; vote_idx++) {
 
-        const uint32_t insert_position = thrust::get<0>(t); 
-        const bool     key_found = thrust::get<1>(t); 
-        const uint32_t ppf_index = thrust::get<2>(t); 
-        const uint32_t ppf_count = thrust::get<3>(t); 
-        const float alpha_s = thrust::get<4>(t); 
-
-        if (key_found) {
-            for (int vote_idx = 0; vote_idx < ppf_count; vote_idx++) {
-
-                uint64_t model_ppf_code = model_ppf_ptr[ppf_index + vote_idx];
+                uint64_t model_ppf_code = ppf_codes[ppf_index[i] + vote_idx];
 
                 uint16_t model_index = static_cast<uint16_t>(model_ppf_code >> 16 & 0xFFFF);
                 float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
 
-                uint16_t alpha = static_cast<uint16_t>((alpha_m - alpha_s) / discretization_angle);
+                uint16_t alpha = static_cast<uint16_t>((alpha_m - alpha_s[i]) / discretization_angle);
 
                 uint32_t vote = static_cast<uint32_t>(model_index) << 16 |
                                 static_cast<uint32_t>(alpha);
 
-                votes_ptr[insert_position + vote_idx] =  vote;
+                votes_ptr[insert[i] + vote_idx] =  vote;
             }
         }
     }
@@ -246,27 +299,14 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
     thrust::device_vector<uint32_t> unique_votes(votes_total);
     thrust::device_vector<uint32_t> vote_count(votes_total);
 
-    thrust::for_each(
-        thrust::make_zip_iterator(
-            thrust::make_tuple(
-                d_insert_pos.begin(), 
-                d_key_found.begin(),
-                d_ppf_index.begin(),
-                d_ppf_count.begin(),
-                d_alpha_s_list.begin()
-            )
-        ),          
-        thrust::make_zip_iterator(
-            thrust::make_tuple(
-                d_insert_pos.end(), 
-                d_key_found.begin(),
-                d_ppf_index.end(),
-                d_ppf_count.end(),
-                d_alpha_s_list.end()
-            )
-        ),          
-        write_votes(ppf_codes, discretization_angle, votes)
-    );
+    VotesExtraction write_votes(d_alpha_s_list, 
+                                ppf_codes, 
+                                d_key_found, d_ppf_index, 
+                                d_ppf_count, d_insert_pos,
+                                discretization_angle,
+                                votes);
+
+    thrust::for_each(it, it + hash_list.size(), write_votes);
 
     thrust::sort(votes.begin(), votes.end());
 
