@@ -65,44 +65,32 @@ struct write_votes {
 
 
 /** \brief Computes the PPF features for the input cloud.
- *  \param[in] cloud Pointer to the point cloud.
- *  \param[in] normals Pointer to the normals of the cloud.
+ *  \param[in] h_points Host vector with the 3D information of the points.
+ *  \param[in] h_normals Host vector with the normals of each point.
  *  \param[in] disc_dist Discretization factor for pair distance.
  *  \param[in] disc_angle Discretization factor for angles.
  */
-ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
-                 const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr normals,
+ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
+                 const pcl::cuda::Host<float3>::type& h_normals,
                  const float disc_dist,
                  const float disc_angle)
     : discretization_distance(disc_dist)
     , discretization_angle(disc_angle) {
 
-    const std::size_t number_of_points = cloud->size();
+    const std::size_t number_of_points = h_points.size();
     const std::size_t number_of_pairs = number_of_points * number_of_points;
 
     float affine[12];
 
-    pcl::cuda::PointCloudSOA<pcl::cuda::Device>::Ptr 
-        d_cloud(new pcl::cuda::PointCloudSOA<pcl::cuda::Device>());
-    pcl::cuda::PointCloudSOA<pcl::cuda::Device>::Ptr 
-        d_normals(new pcl::cuda::PointCloudSOA<pcl::cuda::Device>());
-
-    *d_cloud << *cloud;
-    *d_normals << *normals;
+    pcl::cuda::Device<float3>::type d_points(h_points);
+    pcl::cuda::Device<float3>::type d_normals(h_normals);
 
     ppf_codes.resize(number_of_pairs);
 
     float max_distance = 0.0f;
-
     for (int i = 0; i < number_of_points; i++) {
-    
-        const float3 point_position = make_float3(cloud->points_x[i],
-                                                  cloud->points_y[i],
-                                                  cloud->points_z[i]);
-
-        const float3 point_normal = make_float3(normals->points_x[i],
-                                                normals->points_y[i],
-                                                normals->points_z[i]);
+        const float3 point_position = h_points[i];
+        const float3 point_normal = h_normals[i];
 
         ppfmap::getAlignmentToX(point_position, point_normal, &affine);
 
@@ -111,12 +99,12 @@ ppfmap::Map::Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
                                          discretization_angle,
                                          affine);
 
-        thrust::transform(d_cloud->zip_begin(), d_cloud->zip_end(),
-                          d_normals->zip_begin(),
+        thrust::transform(d_points.begin(), d_points.end(),
+                          d_normals.begin(),
                           ppf_codes.begin() + i * number_of_points,
                           ppfe);
 
-        float max_pair_dist = ppfmap::maxDistanceToPoint(point_position, d_cloud);
+        float max_pair_dist = ppfmap::maxDistanceToPoint<pcl::cuda::Device>(point_position, d_points);
 
         if (max_distance < max_pair_dist) {
             max_distance = max_pair_dist; 

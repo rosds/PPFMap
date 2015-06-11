@@ -142,7 +142,7 @@ namespace ppfmap {
     /** \brief Functor structure used to compute the distance between two 
      * points.
      */
-    struct compute_distance {
+    struct compute_distance : public thrust::unary_function<float3, float> {
         const float3 ref_point;
 
         /** \brief Constructor.
@@ -151,13 +151,8 @@ namespace ppfmap {
          */
         compute_distance(const float3 point) : ref_point(point) {}
 
-        template <typename Point>
         __host__ __device__ 
-        float operator()(const Point &pos) const {
-            float3 point = make_float3(thrust::get<0>(pos),
-                                       thrust::get<1>(pos),
-                                       thrust::get<2>(pos));
-
+        float operator()(const float3 &point) const {
             return ppfmap::norm(point - ref_point);
         }
     };
@@ -167,16 +162,13 @@ namespace ppfmap {
      * the point cloud.
      *  \param[in] point The point from which to look for the farthest 
      *  distance.
-     *  \param[in] cloud Pointer to the cloud with the rest of the points.
-     *  \return The greatest distance between the point and the rest of points 
-     *  in the cloud.
+     *  \param[in] points PCL cuda storage containing the points as float3.
      */
     template <template <typename> class Storage>
     inline float maxDistanceToPoint(
         const float3 point, 
-        const boost::shared_ptr<pcl::cuda::PointCloudSOA<Storage> >& cloud) {
-    
-        return thrust::transform_reduce(cloud->zip_begin(), cloud->zip_end(),
+        const typename Storage<float3>::type& points) {
+        return thrust::transform_reduce(points.begin(), points.end(),
                                         compute_distance(point), 0.0f,
                                         thrust::maximum<float>());
     

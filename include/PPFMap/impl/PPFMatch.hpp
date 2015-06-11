@@ -19,24 +19,15 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
 
     const std::size_t number_of_points = model_->size();
 
-    std::unique_ptr<float[]> points_array(new float[3 * number_of_points]);
-    std::unique_ptr<float[]> normals_array(new float[3 * number_of_points]);
+    float3 points_array[number_of_points];
+    float3 normals_array[number_of_points];
 
     for (int i = 0; i < number_of_points; i++) {
-        const auto& point = model_->at(i); 
-        const auto& normal = normals_->at(i); 
-
-        points_array[i * 3 + 0] = point.x;
-        points_array[i * 3 + 1] = point.y;
-        points_array[i * 3 + 2] = point.z;
-
-        normals_array[i * 3 + 0] = normal.normal_x;
-        normals_array[i * 3 + 1] = normal.normal_y;
-        normals_array[i * 3 + 2] = normal.normal_z;
+        points_array[i] = pointToFloat3(model_->at(i));
+        normals_array[i] = normalToFloat3(normals_->at(i));
     }
 
-    model_ppf_map = cuda::setPPFMap(points_array.get(), 
-                                    normals_array.get(), 
+    model_ppf_map = cuda::setPPFMap(points_array, normals_array, 
                                     number_of_points,
                                     discretization_distance,
                                     discretization_angle);
@@ -45,11 +36,11 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
 
     float diameter = model_ppf_map->getCloudDiameter();
 
-    if (diameter / discretization_distance > 256.0f) {
+    if (diameter / discretization_distance > 255.0f) {
         pcl::console::print_warn(stderr, "Warning: possible hash collitions due to distance discretization\n");
     }
 
-    if (2.0f * static_cast<float>(M_PI) / discretization_angle > 256.0f) {
+    if (2.0f * static_cast<float>(M_PI) / discretization_angle > 255.0f) {
         pcl::console::print_warn(stderr, "Warning: possible hash collitions due to angle discretization\n");
     }
 }

@@ -41,13 +41,13 @@ public:
         , cloud_diameter(0.0f) {}
 
     /** \brief Computes the PPF features for the input cloud.
-     *  \param[in] cloud Pointer to the point cloud.
-     *  \param[in] normals Pointer to the normals of the cloud.
+     *  \param[in] h_points Host vector with the 3D information of the points.
+     *  \param[in] h_normals Host vector with the normals of each point.
      *  \param[in] disc_dist Discretization factor for pair distance.
      *  \param[in] disc_angle Discretization factor for angles.
      */
-    Map(const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr cloud,
-        const pcl::cuda::PointCloudSOA<pcl::cuda::Host>::Ptr normals,
+    Map(const pcl::cuda::Host<float3>::type& h_points,
+        const pcl::cuda::Host<float3>::type& h_normals,
         const float disc_dist,
         const float disc_angle);
 

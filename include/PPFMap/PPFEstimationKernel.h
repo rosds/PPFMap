@@ -19,7 +19,7 @@ namespace ppfmap {
      *  Using a thrust::transform function, this functor is used to compute all 
      *  the ppf features in the cloud in parallel.
      */
-    struct PPFEstimationKernel {
+    struct PPFEstimationKernel : public thrust::binary_function<float3, float3, uint64_t> {
     
         const float3 ref_point;
         const float3 ref_normal;
@@ -52,17 +52,8 @@ namespace ppfmap {
             cudaMemcpyToSymbol(affine, transformation, 12 * sizeof(float));
         }
 
-
-        template <typename T> __device__
-        uint64_t operator()(const T position, const T normal) const {
-
-            float3 point = make_float3(thrust::get<0>(position),
-                                       thrust::get<1>(position),
-                                       thrust::get<2>(position));
-
-            float3 point_normal = make_float3(thrust::get<0>(normal),
-                                              thrust::get<1>(normal),
-                                              thrust::get<2>(normal));
+        __device__
+        uint64_t operator()(const float3 point, const float3 point_normal) const {
 
             // Compute the hash key
             uint32_t hk = computePPFFeatureHash(ref_point, ref_normal,
