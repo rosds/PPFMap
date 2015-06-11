@@ -64,6 +64,65 @@ struct write_votes {
 };
 
 
+struct PPFMapSearch {
+    const std::size_t n;
+    const uint32_t* hash_list;
+
+    const uint32_t* hash_keys;
+    const uint32_t* ppf_index;
+    const uint32_t* ppf_count;
+
+    bool* out_found;
+    uint32_t* out_index;
+    uint32_t* out_count;
+
+    PPFMapSearch(const thrust::device_vector<uint32_t>& hl,
+                 const thrust::device_vector<uint32_t>& map_hash_keys,
+                 const thrust::device_vector<uint32_t>& map_ppf_index,
+                 const thrust::device_vector<uint32_t>& map_ppf_count,
+                 thrust::device_vector<bool>& result_found,
+                 thrust::device_vector<uint32_t>& result_index,
+                 thrust::device_vector<uint32_t>& result_count)
+        : n(map_hash_keys.size())
+        , hash_list(thrust::raw_pointer_cast(hl.data()))
+        , hash_keys(thrust::raw_pointer_cast(map_hash_keys.data()))
+        , ppf_index(thrust::raw_pointer_cast(map_ppf_index.data()))
+        , ppf_count(thrust::raw_pointer_cast(map_ppf_count.data()))
+        , out_found(thrust::raw_pointer_cast(result_found.data()))
+        , out_index(thrust::raw_pointer_cast(result_index.data()))
+        , out_count(thrust::raw_pointer_cast(result_count.data())) {}
+
+    __device__
+    void operator()(const int i) {
+        const uint32_t hk = hash_list[i]; 
+
+        out_found[i] = false;
+        out_index[i] = 0;
+        out_count[i] = 0;
+    
+        int l = 0;
+        int r = n;
+        int m = (l + r) / 2;
+
+        while (l < r) {
+            if (hk < hash_keys[m]) {
+                r = m;
+            }
+            else if (hk > hash_keys[m]) {
+                l = m + 1;
+            }
+            else {
+                out_found[i] = true;
+                out_index[i] = ppf_index[m];
+                out_count[i] = ppf_count[m];
+                break; 
+            } 
+            m = (l + r) / 2; 
+        }
+    }
+};
+
+
 /** \brief Computes the PPF features for the input cloud.
  *  \param[in] h_points Host vector with the 3D information of the points.
  *  \param[in] h_normals Host vector with the normals of each point.
@@ -166,25 +225,16 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
     thrust::device_vector<float> d_alpha_s_list = alpha_s_list;
 
     thrust::device_vector<bool> d_key_found(d_hash_list.size());
-    thrust::device_vector<uint32_t> d_key_index(d_hash_list.size());
     thrust::device_vector<uint32_t> d_ppf_index(d_hash_list.size());
     thrust::device_vector<uint32_t> d_ppf_count(d_hash_list.size());
     thrust::device_vector<uint32_t> d_insert_pos(d_hash_list.size());
 
-    thrust::binary_search(hash_keys.begin(), hash_keys.end(),
-                          d_hash_list.begin(), d_hash_list.end(),
-                          d_key_found.begin());
+    PPFMapSearch m_search(d_hash_list, 
+                          hash_keys, ppf_index, ppf_count, 
+                          d_key_found, d_ppf_index, d_ppf_count);
 
-    thrust::lower_bound(hash_keys.begin(), hash_keys.end(),
-                        d_hash_list.begin(), d_hash_list.end(),
-                        d_key_index.begin());
-
-    thrust::transform(d_key_index.begin(), d_key_index.end(), 
-                      d_ppf_index.begin(), 
-                      copy_element_by_index(ppf_index));
-
-    thrust::transform(d_key_index.begin(), d_key_index.end(), d_ppf_count.begin(), 
-                      copy_element_by_index(ppf_count));
+    thrust::counting_iterator<int> it(0);
+    thrust::for_each(it, it + hash_list.size(), m_search);
 
     uint64_t votes_total = thrust::reduce(d_ppf_count.begin(), d_ppf_count.end(), 
                                           0, thrust::plus<uint64_t>());
