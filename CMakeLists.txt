@@ -57,6 +57,13 @@ target_link_libraries (demo ppfmap ${PCL_LIBRARIES})
 
 
 ##############################################################################
+#   Installation rules                                                       #
+##############################################################################
+
+install (TARGETS ppfmap DESTINATION bin)
+install (DIRECTORY include/PPFMap DESTINATION include)
+
+##############################################################################
 #   Doxygen documentation                                                    #
 ##############################################################################
 
