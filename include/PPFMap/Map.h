@@ -60,10 +60,12 @@ public:
      *  \param[out] m_idx Best matching index in Hough voting space.
      *  \param[out] alpha Resulting angle after combining the alpha_s and 
      *  alpha_m.
+     *  \param[out] max_votes The number of pairs supporting the m_idx and alpha 
+     *  parameters.
      */
     void searchBestMatch(const thrust::host_vector<uint32_t> hash_list, 
                          const thrust::host_vector<float> alpha_s_list,
-                         int& m_idx, float& alpha);
+                         int& m_idx, float& alpha, int& max_votes);
 
     /** \brief Get lastest pair distance possible in the cloud.
      *  \return The largest distance between pairs in the cloud.

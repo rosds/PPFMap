@@ -159,7 +159,7 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
 
 void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list, 
                                   const thrust::host_vector<float> alpha_s_list,
-                                  int& m_idx, float& alpha) {
+                                  int& m_idx, float& alpha, int& max_votes) {
 
 
     thrust::device_vector<uint32_t> d_hash_list = hash_list;
@@ -238,4 +238,5 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
 
     m_idx = static_cast<int>(unique_votes[position] >> 16);
     alpha = static_cast<float>(unique_votes[position] & 0xFFFF) * discretization_angle;
+    max_votes = static_cast<int>(*iter);
 }
