@@ -3,6 +3,7 @@
 
 #include <pcl/common/common_headers.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/correspondence.h>
 
 #include <thrust/host_vector.h>
 
@@ -17,12 +18,9 @@ namespace ppfmap {
 /** \brief Represents a pose supported by a correspondence.
  */
 struct Pose {
+    int votes;
     Eigen::Affine3f t;
     pcl::Correspondence c;
-
-    Pose(const Eigen::Affine3f &trans, const pcl::Correspondence &corr)
-        : t(trans)
-        , c(corr) {}
 };
 
 
@@ -80,23 +78,19 @@ private:
     /** \brief Perform the voting and accumulation of the PPF features in the 
      * model and returns the model index with the most votes.
      *
-     *  \param[in] point_index Index of the point.
-     *  \param[in] cloud The pointer to the cloud where the queried point is.
+     *  \param[in] reference_index Index of the reference point.
      *  \param[in] cloud_normals The pointer to the normals of the cloud.
      *  \param[in] neighborhood_radius The radius to consider for building 
      *  pairs around the reference point.
-     *  \param[out] m_idx Matching model index
-     *  \param[out] pose Affine transformation supported by the match
+     *  \param[out] final_pose Resulting pose after the Hough voting.
      *  \return The index of the model point with the higher number of votes.
      */
-    int getPose(const float3& ref_point,
-                const float3& ref_normal,
+    int getPose(const int reference_index,
                 const std::vector<int>& indices,
                 const PointCloudPtr cloud,
                 const NormalsPtr cloud_normals,
-                float affine_s[12],
-                int& m_idx,
-                Eigen::Affine3f& pose);
+                const float affine_s[12],
+                Pose* final_pose);
 
     /** \brief True if poses are similar given the translation and rotation 
      * thresholds.

@@ -88,12 +88,11 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 
         kdtree.radiusSearch(point, radius, indices, distances);
 
-        int j;
-        Eigen::Affine3f pose;
-        getPose(pointToFloat3(point), normalToFloat3(normal),
-                indices, cloud, normals, affine_s, j, pose);
+        Pose pose;
+        getPose(i, indices, cloud, normals, affine_s, &pose);
 
-        pose_vector.push_back(Pose(pose, pcl::Correspondence(i, j, 0.0f)));
+        pose_vector.push_back(pose);
+        //pose_vector.push_back(Pose(pose, pcl::Correspondence(i, j, 0.0f), votes));
 
         }
         dummy++;
@@ -103,19 +102,30 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 }
 
 
+/** \brief Perform the voting and accumulation of the PPF features in the 
+ * model and returns the model index with the most votes.
+ *
+ *  \param[in] reference_index Index of the reference point.
+ *  \param[in] cloud_normals The pointer to the normals of the cloud.
+ *  \param[in] neighborhood_radius The radius to consider for building 
+ *  pairs around the reference point.
+ *  \param[out] final_pose Resulting pose after the Hough voting.
+ *  \return The index of the model point with the higher number of votes.
+ */
 template <typename PointT, typename NormalT>
 int ppfmap::PPFMatch<PointT, NormalT>::getPose(
-    const float3& ref_point,
-    const float3& ref_normal,
+    const int reference_index,
     const std::vector<int>& indices,
     const PointCloudPtr cloud,
     const NormalsPtr normals,
-    float affine_s[12],
-    int& m_idx,
-    Eigen::Affine3f& pose) {
+    const float affine_s[12],
+    Pose* final_pose) {
 
     float affine_m[12];
     std::size_t n = indices.size();
+
+    const float3 ref_point = ppfmap::pointToFloat3(cloud->at(reference_index));
+    const float3 ref_normal = ppfmap::normalToFloat3(cloud->at(reference_index));
 
     thrust::host_vector<uint32_t> hash_list(n);
     thrust::host_vector<float> alpha_s_list(n);
@@ -127,20 +137,22 @@ int ppfmap::PPFMatch<PointT, NormalT>::getPose(
         const float3& point = ppfmap::pointToFloat3(cloud->at(index));
         const float3& normal = ppfmap::normalToFloat3(normals->at(index));
 
-        float d_y = point.x * affine_s[4] + point.y * affine_s[5] + point.z * affine_s[6] + affine_s[7]; 
-        float d_z = point.x * affine_s[8] + point.y * affine_s[9] + point.z * affine_s[10] + affine_s[11]; 
-
-        alpha_s_list[i] = atan2f(-d_z, d_y);
+        // Compute the PPF between reference_point and the i-th neighbor
         hash_list[i] = computePPFFeatureHash(ref_point, ref_normal,
                                              point, normal,
                                              discretization_distance,
                                              discretization_angle);
 
+        // Consider only the y and z plane for alpha_s calculation
+        float d_y = point.x * affine_s[4] + point.y * affine_s[5] + point.z * affine_s[6] + affine_s[7]; 
+        float d_z = point.x * affine_s[8] + point.y * affine_s[9] + point.z * affine_s[10] + affine_s[11]; 
+        alpha_s_list[i] = atan2f(-d_z, d_y);
     }
 
     int index;
     float alpha;
-    model_ppf_map->searchBestMatch(hash_list, alpha_s_list, index, alpha);
+    int votes;
+    model_ppf_map->searchBestMatch(hash_list, alpha_s_list, index, alpha, votes);
 
     const auto& model_point = model_->at(index);
     const auto& model_normal = normals_->at(index);
@@ -149,14 +161,15 @@ int ppfmap::PPFMatch<PointT, NormalT>::getPose(
                     ppfmap::normalToFloat3(model_normal), 
                     &affine_m);
 
-    Eigen::Map<Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tsg_map(affine_s);
-    Eigen::Map<Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tmg_map(affine_m);
+    Eigen::Map<const Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tsg_map(affine_s);
+    Eigen::Map<const Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tmg_map(affine_m);
 
     Eigen::Affine3f Tsg(Eigen::Translation3f(Tsg_map.block<3, 1>(0, 3)) * Eigen::AngleAxisf(Tsg_map.block<3, 3>(0, 0)));
     Eigen::Affine3f Tmg(Eigen::Translation3f(Tmg_map.block<3, 1>(0, 3)) * Eigen::AngleAxisf(Tmg_map.block<3, 3>(0, 0)));
 
-    pose = Tsg.inverse() * Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitX()) * Tmg;
-    m_idx = index;
+    final_pose->c = pcl::Correspondence(reference_index, index, 0.0f);
+    final_pose->t = Tsg.inverse() * Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitX()) * Tmg;
+    final_pose->votes = votes;
 }
 
 
@@ -201,7 +214,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
             if (similarPoses(pose.t, cluster.front().t)) {
                 found_cluster = true;
                 cluster.push_back(pose);
-                cluster_votes[cluster_idx].first++;
+                cluster_votes[cluster_idx].first++; //= pose.votes;
             }
             ++cluster_idx;
         }
@@ -216,7 +229,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
     }
 
     std::sort(cluster_votes.begin(), cluster_votes.end());
-    
+
     Eigen::Vector3f translation_average (0.0, 0.0, 0.0);
     Eigen::Vector4f rotation_average (0.0, 0.0, 0.0, 0.0);
 
