@@ -274,8 +274,8 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
                                   int& m_idx, float& alpha) {
 
 
-    thrust::device_vector<uint32_t> d_hash_list = hash_list;
-    thrust::device_vector<float> d_alpha_s_list = alpha_s_list;
+    thrust::device_vector<uint32_t> d_hash_list(hash_list);
+    thrust::device_vector<float> d_alpha_s_list(alpha_s_list);
 
     thrust::device_vector<bool> d_key_found(d_hash_list.size());
     thrust::device_vector<uint32_t> d_ppf_index(d_hash_list.size());
