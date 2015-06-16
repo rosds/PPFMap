@@ -27,7 +27,7 @@ You can set the specific capability on the `CMakeLists.txt` file, in the
 ```
 
 
-![Demo preview](https://octodex.github.com/alfonsoros88/PPFMap/tree/master/images/demo.png)
+![Demo preview](https://raw.githubusercontent.com/alfonsoros88/PPFMap/master/doc/images/demo.png)
 
 ### Documentation
 
