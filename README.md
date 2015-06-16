@@ -26,6 +26,9 @@ You can set the specific capability on the `CMakeLists.txt` file, in the
     ./demo
 ```
 
+
+![Demo preview](https://octodex.github.com/alfonsoros88/PPFMap/tree/master/images/demo.png)
+
 ### Documentation
 
 Doxygen is used for the documentation. To generate it, simply execute the 

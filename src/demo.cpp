@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     // ========================================================================
 
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
-    trans(0,3) = -4.0f;
+    trans(0,3) = -1.0f;
 
     std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);

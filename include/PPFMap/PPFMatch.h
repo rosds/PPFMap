@@ -25,6 +25,37 @@ struct Pose {
 
 
 /** \brief Implements the PPF features matching between two point clouds.
+ *  
+ *  This class's behavior is ruled basically by 5 parameters. Two of these 
+ *  parameters affect the PPF Map structure and its performance. These are the 
+ *  discretization step parameters that you set with the function 
+ *  PPFMatch::setDiscretizationParameters.
+ *
+ *  These are two parameter; the discretization distance and discretization 
+ *  angle steps. These two basically are meant to "group" similar features 
+ *  together. Setting small discretization distance and angle will result in a 
+ *  larger number of groups of features. The more groups, the more precision in 
+ *  the geometry that is being saved in the map but lest robustness to noise. 
+ *  On the other hand, big discretization steps for distance and angle will 
+ *  create less groups with similar features, gut for generalization and 
+ *  robustness against noise but the geometry of the model is then lost.
+ *
+ *  The next parameter is the percentage of the maximum radius for the pairs 
+ *  neighborhood. The model has a maximum diameter; a pair of points with the 
+ *  largest distance between them. Searching for pairs in the scene separated 
+ *  with a distance larger than this maximum diameter makes no sense when 
+ *  looking for possible matchings on the model cloud. Therefor, this 
+ *  parameter represents the percentage of this maximum diameter to use as a 
+ *  neighborhood radius search. You set this parameter with the function 
+ *  PPFMatch::setMaxRadiusPercent.
+ *
+ *  Finally, the final two parameters are used in the pose clustering step. 
+ *  These parameters represent thresholds to group similar poses. There are the 
+ *  translation threshold and rotation threshold. The translation threshold 
+ *  sets a limit on the distance between the translation parts of two poses for 
+ *  being considered as similar. In the same way, the rotation threshold, sets 
+ *  the limit in the angle for rotation between the two poses. You can set 
+ *  these two with the function PPFMatch::setPoseClusteringThresholds.
  *
  *  \tparam PointT Point type of the clouds.
  *  \tparam NormalT Normal type of the clouds.
