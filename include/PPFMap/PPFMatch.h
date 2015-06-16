@@ -82,15 +82,13 @@ private:
      *  \param[in] cloud_normals The pointer to the normals of the cloud.
      *  \param[in] neighborhood_radius The radius to consider for building 
      *  pairs around the reference point.
-     *  \param[out] final_pose Resulting pose after the Hough voting.
-     *  \return The index of the model point with the higher number of votes.
+     *  \return The pose with the most votes in the Hough space.
      */
-    int getPose(const int reference_index,
-                const std::vector<int>& indices,
-                const PointCloudPtr cloud,
-                const NormalsPtr cloud_normals,
-                const float affine_s[12],
-                Pose* final_pose);
+    Pose getPose(const int reference_index,
+                 const std::vector<int>& indices,
+                 const PointCloudPtr cloud,
+                 const NormalsPtr cloud_normals,
+                 const float affine_s[12]);
 
     /** \brief True if poses are similar given the translation and rotation 
      * thresholds.
