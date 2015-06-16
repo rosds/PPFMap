@@ -79,6 +79,10 @@ int main(int argc, char *argv[]) {
  */
 
 
+    // ========================================================================
+    //  Transform the model cloud with a random rotation
+    // ========================================================================
+
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -4.0f;
 
@@ -100,23 +104,25 @@ int main(int argc, char *argv[]) {
     // ========================================================================
 
     pcl::StopWatch timer;
-    timer.reset();
 
-    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
+    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setMaxRadiusPercent(0.5f);
+
+    timer.reset();
     ppf_matching.setModelCloud(model_downsampled, model_downsampled);
-
     std::cout << "PPF Map creation: " << timer.getTimeSeconds() << "s" <<  std::endl;
-
-    timer.reset();
 
     Eigen::Affine3f T;
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
-    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
 
+    timer.reset();
+    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
     std::cout << "Object detection: " << timer.getTimeSeconds() << "s" <<  std::endl;
 
     // ========================================================================
-    //  Visualize the clouds
+    //  Visualize the clouds and the matching
     // ========================================================================
 
     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer());
@@ -132,7 +138,6 @@ int main(int argc, char *argv[]) {
     }
 
     pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed(new pcl::PointCloud<pcl::PointNormal>());
-
     pcl::transformPointCloud(*model_downsampled, *model_transformed, T);
     pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
     viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");

@@ -98,7 +98,7 @@ namespace ppfmap {
     __host__
     inline void getAlignmentToX(const PointT point,
                                 const NormalT normal,
-                                float (*affine)[16]) {
+                                float (*affine)[12]) {
         getAlignmentToX<float3, float3>(pointToFloat3(point), normalToFloat3(normal), affine);
     }
     
@@ -106,7 +106,7 @@ namespace ppfmap {
     template<>
     __host__ __device__
     inline void getAlignmentToX<float3, float3> (
-        const float3 point, const float3 normal, float (*affine)[16]) {
+        const float3 point, const float3 normal, float (*affine)[12]) {
     
         // Calculate the angle between the normal and the X axis.
         float rotation_angle = acosf(normal.x);
@@ -159,10 +159,6 @@ namespace ppfmap {
                         - point.y * (*affine)[9] 
                         - point.z * (*affine)[10];
 
-        (*affine)[12] = 0.0f;
-        (*affine)[13] = 0.0f;
-        (*affine)[14] = 0.0f;
-        (*affine)[15] = 1.0f;
     }
 
 

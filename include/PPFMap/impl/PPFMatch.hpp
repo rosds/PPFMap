@@ -64,7 +64,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 
     float affine_s[12];
     std::vector<Pose> pose_vector;
-    const float radius = model_ppf_map->getCloudDiameter() * 0.6f;
+    const float radius = model_ppf_map->getCloudDiameter() * neighborhood_percentage;
 
     std::vector<int> indices;
     std::vector<float> distances;
@@ -93,9 +93,11 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
  * model and returns the model index with the most votes.
  *
  *  \param[in] reference_index Index of the reference point.
- *  \param[in] cloud_normals The pointer to the normals of the cloud.
- *  \param[in] neighborhood_radius The radius to consider for building 
- *  pairs around the reference point.
+ *  \param[in] indices Vector of indices of the reference point neighbors.
+ *  \param[in] cloud Shared pointer to the cloud.
+ *  \param[in] cloud_normals Shared pointer to the cloud normals.
+ *  \param[in] affine_s Affine matrix with the rotation and translation for 
+ *  the alignment of the reference point/normal with the X axis.
  *  \return The pose with the most votes in the Hough space.
  */
 template <typename PointT, typename NormalT>

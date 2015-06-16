@@ -34,20 +34,53 @@ class PPFMatch {
 public:
     typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
     typedef typename pcl::PointCloud<NormalT>::Ptr NormalsPtr;
+    typedef boost::shared_ptr<PPFMatch<PointT, NormalT> > Ptr;
 
     /** \brief Constructor for the 
      *  \param[in] disc_dist Discretization distance for the point pairs.
      *  \param[in] disc_angle Discretization angle for the ppf features.
      */
-    PPFMatch(const float disc_dist, const float disc_angle)
+    PPFMatch(const float disc_dist = 0.01f, 
+             const float disc_angle = 12.0f / 180.0f * static_cast<float>(M_PI))
         : discretization_distance(disc_dist)
         , discretization_angle(disc_angle)
-        , translation_threshold(0.1f)
-        , rotation_threshold(12.0f / 180.0f * static_cast<float>(M_PI))
+        , translation_threshold(0.7f)
+        , rotation_threshold(30.0f / 180.0f * static_cast<float>(M_PI))
+        , neighborhood_percentage(0.5f)
         , model_map_initialized(false) {}
 
     /** \brief Default destructor **/
     virtual ~PPFMatch() {}
+
+    /** \brief Sets the percentage of the models diameter to use as maximum 
+     * radius while searching pairs in the scene.
+     *  \param[in] percent Float between 0 and 1 to represent the percentage of 
+     *  the maximum radius possible when searching for the model in the secene.
+     */
+    void setMaxRadiusPercent(const float percent) {
+        neighborhood_percentage = percent;
+    }
+
+    /** \brief Sets the discretization parameter for the PPF Map creation.
+     *  \param[in] dist_disc Discretization distance step.
+     *  \param[in] angle_disc Discretization angle step.
+     */
+    void setDiscretizationParameters(const float dist_disc,
+                                     const float angle_disc) {
+        discretization_distance = dist_disc;
+        discretization_angle = angle_disc;
+    }
+
+    /** \brief Sets the translation and rotation thresholds for the pose 
+     * clustering step.
+     *  \param[in] translation_thresh Translation threshold.
+     *  \param[in] rotation_thresh Rotation threshold.
+     */
+    void setPoseClusteringThresholds(const float translation_thresh,
+                                     const float rotation_thresh) {
+        translation_threshold = translation_thresh;
+        rotation_threshold = rotation_thresh;
+    }
 
     /** \brief Construct the PPF search structures for the model cloud.
      *  
@@ -79,9 +112,11 @@ private:
      * model and returns the model index with the most votes.
      *
      *  \param[in] reference_index Index of the reference point.
-     *  \param[in] cloud_normals The pointer to the normals of the cloud.
-     *  \param[in] neighborhood_radius The radius to consider for building 
-     *  pairs around the reference point.
+     *  \param[in] indices Vector of indices of the reference point neighbors.
+     *  \param[in] cloud Shared pointer to the cloud.
+     *  \param[in] cloud_normals Shared pointer to the cloud normals.
+     *  \param[in] affine_s Affine matrix with the rotation and translation for 
+     *  the alignment of the reference point/normal with the X axis.
      *  \return The pose with the most votes in the Hough space.
      */
     Pose getPose(const int reference_index,
@@ -98,13 +133,21 @@ private:
      */
     bool similarPoses(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
 
+    /** \brief Returns the average pose and the correspondences for the most 
+     * consistent cluster of poses.
+     *  \param[in] poses Vector with the poses.
+     *  \param[out] trans Average affine transformation for the biggest 
+     *  cluster.
+     *  \param[out] corr Vector of correspondences supporting the cluster.
+     */
     void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
-    const float discretization_distance;
-    const float discretization_angle;
-    const float translation_threshold;
-    const float rotation_threshold;
+    float discretization_distance;
+    float discretization_angle;
+    float translation_threshold;
+    float rotation_threshold;
+    float neighborhood_percentage;
 
     PointCloudPtr model_;
     NormalsPtr normals_;
