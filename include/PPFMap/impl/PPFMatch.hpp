@@ -64,7 +64,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 
     float affine_s[12];
     std::vector<Pose> pose_vector;
-    const float radius = model_ppf_map->getCloudDiameter() * 0.6f;
+    const float radius = model_ppf_map->getCloudDiameter() * neighborhood_percentage;
 
     std::vector<int> indices;
     std::vector<float> distances;
@@ -72,30 +72,17 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
     pcl::KdTreeFLANN<PointT> kdtree;
     kdtree.setInputCloud(cloud);
 
-    int dummy = 0;
-    for (std::size_t i = 0; i < cloud->size(); i++) {
-
-        if (dummy % 10 == 0) {
-
+    for (std::size_t i = 0; i < cloud->size(); i += 5) {
         const auto& point = cloud->at(i);
         const auto& normal = normals->at(i);
 
         if (!pcl::isFinite(point)) continue;
 
-        getAlignmentToX(ppfmap::pointToFloat3(point), 
-                        ppfmap::normalToFloat3(normal), 
-                        &affine_s);
+        getAlignmentToX(point, normal, &affine_s);
 
         kdtree.radiusSearch(point, radius, indices, distances);
 
-        Pose pose;
-        getPose(i, indices, cloud, normals, affine_s, &pose);
-
-        pose_vector.push_back(pose);
-        //pose_vector.push_back(Pose(pose, pcl::Correspondence(i, j, 0.0f), votes));
-
-        }
-        dummy++;
+        pose_vector.push_back(getPose(i, indices, cloud, normals, affine_s));
     }
 
     clusterPoses(pose_vector, trans, correspondences);
@@ -106,26 +93,28 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
  * model and returns the model index with the most votes.
  *
  *  \param[in] reference_index Index of the reference point.
- *  \param[in] cloud_normals The pointer to the normals of the cloud.
- *  \param[in] neighborhood_radius The radius to consider for building 
- *  pairs around the reference point.
- *  \param[out] final_pose Resulting pose after the Hough voting.
- *  \return The index of the model point with the higher number of votes.
+ *  \param[in] indices Vector of indices of the reference point neighbors.
+ *  \param[in] cloud Shared pointer to the cloud.
+ *  \param[in] cloud_normals Shared pointer to the cloud normals.
+ *  \param[in] affine_s Affine matrix with the rotation and translation for 
+ *  the alignment of the reference point/normal with the X axis.
+ *  \return The pose with the most votes in the Hough space.
  */
 template <typename PointT, typename NormalT>
-int ppfmap::PPFMatch<PointT, NormalT>::getPose(
+ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
     const int reference_index,
     const std::vector<int>& indices,
     const PointCloudPtr cloud,
     const NormalsPtr normals,
-    const float affine_s[12],
-    Pose* final_pose) {
+    const float affine_s[12]) {
+
+    Eigen::Map<const Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tsg_map(affine_s);
 
     float affine_m[12];
     std::size_t n = indices.size();
 
-    const float3 ref_point = ppfmap::pointToFloat3(cloud->at(reference_index));
-    const float3 ref_normal = ppfmap::normalToFloat3(cloud->at(reference_index));
+    const auto& ref_point = cloud->at(reference_index);
+    const auto& ref_normal = cloud->at(reference_index);
 
     thrust::host_vector<uint32_t> hash_list(n);
     thrust::host_vector<float> alpha_s_list(n);
@@ -133,9 +122,8 @@ int ppfmap::PPFMatch<PointT, NormalT>::getPose(
     // Compute the PPF feature for all the pairs in the neighborhood
     for (int i = 0; i < n; i++) {
         const int index = indices[i];
-
-        const float3& point = ppfmap::pointToFloat3(cloud->at(index));
-        const float3& normal = ppfmap::normalToFloat3(normals->at(index));
+        const auto& point = cloud->at(index);
+        const auto& normal = normals->at(index);
 
         // Compute the PPF between reference_point and the i-th neighbor
         hash_list[i] = computePPFFeatureHash(ref_point, ref_normal,
@@ -143,10 +131,9 @@ int ppfmap::PPFMatch<PointT, NormalT>::getPose(
                                              discretization_distance,
                                              discretization_angle);
 
-        // Consider only the y and z plane for alpha_s calculation
-        float d_y = point.x * affine_s[4] + point.y * affine_s[5] + point.z * affine_s[6] + affine_s[7]; 
-        float d_z = point.x * affine_s[8] + point.y * affine_s[9] + point.z * affine_s[10] + affine_s[11]; 
-        alpha_s_list[i] = atan2f(-d_z, d_y);
+        // Compute the alpha_s angle
+        const Eigen::Vector3f transformed(Tsg_map * point.getVector4fMap());
+        alpha_s_list[i] = atan2f(-transformed(2), transformed(1));
     }
 
     int index;
@@ -157,19 +144,20 @@ int ppfmap::PPFMatch<PointT, NormalT>::getPose(
     const auto& model_point = model_->at(index);
     const auto& model_normal = normals_->at(index);
 
-    getAlignmentToX(ppfmap::pointToFloat3(model_point), 
-                    ppfmap::normalToFloat3(model_normal), 
-                    &affine_m);
+    getAlignmentToX(model_point, model_normal, &affine_m);
 
-    Eigen::Map<const Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tsg_map(affine_s);
     Eigen::Map<const Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tmg_map(affine_m);
 
-    Eigen::Affine3f Tsg(Eigen::Translation3f(Tsg_map.block<3, 1>(0, 3)) * Eigen::AngleAxisf(Tsg_map.block<3, 3>(0, 0)));
-    Eigen::Affine3f Tmg(Eigen::Translation3f(Tmg_map.block<3, 1>(0, 3)) * Eigen::AngleAxisf(Tmg_map.block<3, 3>(0, 0)));
+    Eigen::Affine3f Tsg, Tmg;
+    Tsg.matrix().block<3, 4>(0, 0) = Tsg_map.matrix();
+    Tmg.matrix().block<3, 4>(0, 0) = Tmg_map.matrix();
 
-    final_pose->c = pcl::Correspondence(reference_index, index, 0.0f);
-    final_pose->t = Tsg.inverse() * Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitX()) * Tmg;
-    final_pose->votes = votes;
+    // Set final pose
+    Pose final_pose;
+    final_pose.c = pcl::Correspondence(reference_index, index, 0.0f);
+    final_pose.t = Tsg.inverse() * Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitX()) * Tmg;
+    final_pose.votes = votes;
+    return final_pose;
 }
 
 
@@ -214,7 +202,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
             if (similarPoses(pose.t, cluster.front().t)) {
                 found_cluster = true;
                 cluster.push_back(pose);
-                cluster_votes[cluster_idx].first++; //= pose.votes;
+                cluster_votes[cluster_idx].first++; // = pose.votes;
             }
             ++cluster_idx;
         }

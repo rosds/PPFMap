@@ -1,0 +1,23 @@
+/**
+
+\mainpage PPFMap
+
+PPFMap is a parallel implementation of the Point Pair Feature matching 
+algorithm from <a href="http://far.in.tum.de/pub/drost2010CVPR/drost2010CVPR.pdf">Drost, B.</a>. The parallel
+implementation is as described in the <a 
+href="http://homes.cs.washington.edu/~newcombe/papers/Salas-Moreno_etal_cvpr2013.pdf">SLAM++</a> project.
+
+This project is meant to work with the <a href="http://pointclouds.org/">Point 
+Cloud Library</a>. Therefore the data structures used to do the calculation for 
+the detection of the object model and the scene are perform over 
+pcl::PointClouds.
+
+There is basically a single class for the user to use, ppfmap::PPFMatch. This 
+class creates the PPF Map of the specified object model and afterwards it can 
+search in an scene cloud for the model. Take a look at demo.cpp for a simple 
+example on how to use this class.
+
+\image html demo.png "Demo preview"
+\image latex demo.png
+
+*/

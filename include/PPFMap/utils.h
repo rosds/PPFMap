@@ -42,11 +42,25 @@ namespace ppfmap {
         return f1 << 24 | f2 << 16 | f3 << 8 | f4;
     }
 
+
+    template <typename PointT, typename NormalT>
     __device__ __host__
-    inline uint32_t computePPFFeatureHash(const float3& r, const float3& r_n,
-                                          const float3& p, const float3& p_n,
+    inline uint32_t computePPFFeatureHash(const PointT& r, const NormalT& r_n,
+                                          const PointT& p, const NormalT& p_n,
                                           const float disc_dist,
                                           const float disc_angle) {
+        return computePPFFeatureHash<float3, float3>(pointToFloat3(r), normalToFloat3(r_n),
+                                                     pointToFloat3(p), normalToFloat3(p_n),
+                                                     disc_dist, disc_angle);
+    }
+
+
+    template <>
+    __device__ __host__
+    inline uint32_t computePPFFeatureHash<float3, float3> (
+        const float3& r, const float3& r_n,
+        const float3& p, const float3& p_n,
+        const float disc_dist, const float disc_angle) {
 
         float f1, f2, f3, f4;
         float3 d = make_float3(p.x - r.x,
@@ -80,10 +94,19 @@ namespace ppfmap {
      *  \param[out] affine Affine trasformation to align the 
      *  normal.
      */
-    __host__ __device__
-    inline void getAlignmentToX(const float3 point,
-                                const float3 normal,
+    template <typename PointT, typename NormalT>
+    __host__
+    inline void getAlignmentToX(const PointT point,
+                                const NormalT normal,
                                 float (*affine)[12]) {
+        getAlignmentToX<float3, float3>(pointToFloat3(point), normalToFloat3(normal), affine);
+    }
+    
+    
+    template<>
+    __host__ __device__
+    inline void getAlignmentToX<float3, float3> (
+        const float3 point, const float3 normal, float (*affine)[12]) {
     
         // Calculate the angle between the normal and the X axis.
         float rotation_angle = acosf(normal.x);
