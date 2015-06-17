@@ -269,6 +269,16 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
 }
 
 
+/** \brief Performs the voting and accumulation for the ppf list provided 
+ * and returns the best point index and resulting alpha.
+ *  \param[in] hash_list List of hashed ppf features to query
+ *  \param[in] alpha_s Angle to align the reference point to the x axis.
+ *  \param[out] m_idx Best matching index in Hough voting space.
+ *  \param[out] alpha Resulting angle after combining the alpha_s and 
+ *  alpha_m.
+ *  \param[out] max_votes The number of pairs supporting the m_idx and alpha 
+ *  parameters.
+ */
 void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list, 
                                   const thrust::host_vector<float> alpha_s_list,
                                   int& m_idx, float& alpha, int& max_votes) {
@@ -290,7 +300,7 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
     thrust::for_each(it, it + hash_list.size(), m_search);
 
     uint64_t votes_total = thrust::reduce(d_ppf_count.begin(), d_ppf_count.end(), 
-                                          0, thrust::plus<uint64_t>());
+                                          0, thrust::plus<uint32_t>());
 
     // This sets the position where to start inserting the votes of each ppf
     thrust::exclusive_scan(d_ppf_count.begin(), d_ppf_count.end(), d_insert_pos.begin());
@@ -326,7 +336,9 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
 
     int position = iter - vote_count.begin();
 
-    m_idx = static_cast<int>(unique_votes[position] >> 16);
-    alpha = static_cast<float>(unique_votes[position] & 0xFFFF) * discretization_angle;
+    const uint32_t winner = unique_votes[position];
+
+    m_idx = static_cast<int>(winner >> 16);
+    alpha = static_cast<float>(winner & 0xFFFF) * discretization_angle;
     max_votes = static_cast<int>(*iter);
 }

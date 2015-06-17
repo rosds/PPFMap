@@ -36,7 +36,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
 
     float diameter = model_ppf_map->getCloudDiameter();
 
-    if (diameter / discretization_distance > 255.0f) {
+    if (diameter * neighborhood_percentage / discretization_distance > 255.0f) {
         pcl::console::print_warn(stderr, "Warning: possible hash collitions due to distance discretization\n");
     }
 
@@ -183,6 +183,13 @@ bool ppfmap::PPFMatch<PointT, NormalT>::similarPoses(
 }
 
 
+/** \brief Returns the average pose and the correspondences for the most 
+ * consistent cluster of poses.
+ *  \param[in] poses Vector with the poses.
+ *  \param[out] trans Average affine transformation for the biggest 
+ *  cluster.
+ *  \param[out] corr Vector of correspondences supporting the cluster.
+ */
 template <typename PointT, typename NormalT>
 void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
     const std::vector<Pose>& poses, 
@@ -202,7 +209,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
             if (similarPoses(pose.t, cluster.front().t)) {
                 found_cluster = true;
                 cluster.push_back(pose);
-                cluster_votes[cluster_idx].first++; // = pose.votes;
+                cluster_votes[cluster_idx].first += pose.votes;
             }
             ++cluster_idx;
         }
@@ -212,7 +219,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
             std::vector<Pose> new_cluster;
             new_cluster.push_back(pose);
             pose_clusters.push_back(new_cluster);
-            cluster_votes.push_back(std::pair<int, int>(1, pose_clusters.size() - 1));
+            cluster_votes.push_back(std::pair<int, int>(pose.votes , pose_clusters.size() - 1));
         }
     }
 

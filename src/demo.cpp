@@ -106,9 +106,9 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setDiscretizationParameters(0.005f, 6.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(0.5f);
+    ppf_matching.setMaxRadiusPercent(0.3f);
 
     timer.reset();
     ppf_matching.setModelCloud(model_downsampled, model_downsampled);
