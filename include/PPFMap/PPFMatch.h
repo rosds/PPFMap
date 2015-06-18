@@ -78,7 +78,9 @@ public:
         , translation_threshold(0.7f)
         , rotation_threshold(30.0f / 180.0f * static_cast<float>(M_PI))
         , neighborhood_percentage(0.5f)
-        , model_map_initialized(false) {}
+        , ref_point_indices(new std::vector<int>())
+        , model_map_initialized(false)
+        , use_indices(false) {}
 
     /** \brief Default destructor **/
     virtual ~PPFMatch() {}
@@ -123,6 +125,15 @@ public:
      *  \param[in] normals Cloud with the normals of the object.
      */
     void setModelCloud(const PointCloudPtr model, const NormalsPtr normals);
+
+    /** \brief Specify a vector of indices of points in the cloud to use as 
+     * reference points for the detection task.
+     *  \param[in] ind Shared pointer to a vector of indices.
+     */
+    void setReferencePointIndices(const pcl::IndicesPtr ind) {
+        ref_point_indices = ind;
+        use_indices = true;
+    }
 
     /** \brief Search of the model in an scene cloud and returns the 
      * correspondences and the transformation to the scene.
@@ -174,6 +185,7 @@ private:
     void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
+    bool use_indices;
     float discretization_distance;
     float discretization_angle;
     float translation_threshold;
@@ -183,6 +195,7 @@ private:
     PointCloudPtr model_;
     NormalsPtr normals_;
     ppfmap::Map::Ptr model_ppf_map;
+    pcl::IndicesPtr ref_point_indices;
 };
 
 } // namespace ppfmap

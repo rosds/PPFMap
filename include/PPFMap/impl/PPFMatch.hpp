@@ -72,17 +72,23 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
     pcl::KdTreeFLANN<PointT> kdtree;
     kdtree.setInputCloud(cloud);
 
-    for (std::size_t i = 0; i < cloud->size(); i += 5) {
-        const auto& point = cloud->at(i);
-        const auto& normal = normals->at(i);
+    if (!use_indices) {
+        ref_point_indices->resize(cloud->size());
+        for (int i = 0; i < cloud->size(); i++) {
+            (*ref_point_indices)[i] = i;
+        }
+    }
+
+    for (const auto index : *ref_point_indices) {
+        const auto& point = cloud->at(index);
+        const auto& normal = normals->at(index);
 
         if (!pcl::isFinite(point)) continue;
 
         getAlignmentToX(point, normal, &affine_s);
-
         kdtree.radiusSearch(point, radius, indices, distances);
 
-        pose_vector.push_back(getPose(i, indices, cloud, normals, affine_s));
+        pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
     }
 
     clusterPoses(pose_vector, trans, correspondences);

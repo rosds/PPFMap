@@ -16,7 +16,7 @@ This project may compu
 
 Before compiling the project, check first the cuda capability of your device. 
 You can set the specific capability on the `CMakeLists.txt` file, in the 
-**CUDA__NVCC_FLAGS**.
+**CUDA_NVCC_FLAGS**.
 
 ```bash
     mkdir build

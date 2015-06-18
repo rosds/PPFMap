@@ -102,6 +102,14 @@ int main(int argc, char *argv[]) {
     // ========================================================================
     //  Compute the model's ppfs
     // ========================================================================
+    
+    pcl::IndicesPtr reference_point_indices(new std::vector<int>());
+    for (int i = 0; i < scene_downsampled->size(); i++) {
+        const auto& point = scene_downsampled->at(i);
+        if (pcl::isFinite(point) && point.curvature > 0.03) {
+            reference_point_indices->push_back(i); 
+        }
+    }
 
     pcl::StopWatch timer;
 
@@ -109,6 +117,7 @@ int main(int argc, char *argv[]) {
     ppf_matching.setDiscretizationParameters(0.005f, 6.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setMaxRadiusPercent(0.3f);
+    ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
     ppf_matching.setModelCloud(model_downsampled, model_downsampled);
