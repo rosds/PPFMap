@@ -86,7 +86,8 @@ int main(int argc, char *argv[]) {
     Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
     trans(0,3) = -1.0f;
 
-    std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
     Eigen::Matrix3f rot;
@@ -99,6 +100,36 @@ int main(int argc, char *argv[]) {
 
     pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
 
+    // ========================================================================
+    //  Add gaussian noise to the model cloud
+    // ========================================================================
+    
+    const float stddev = 0.01f;
+
+    for (auto& point : *model_downsampled) {
+
+        std::normal_distribution<float> dist_x(point.x, stddev);
+        std::normal_distribution<float> dist_y(point.y, stddev);
+        std::normal_distribution<float> dist_z(point.z, stddev);
+        std::normal_distribution<float> dist_nx(point.normal_x, stddev);
+        std::normal_distribution<float> dist_ny(point.normal_y, stddev);
+        std::normal_distribution<float> dist_nz(point.normal_z, stddev);
+
+        point.x = dist_x(generator);
+        point.y = dist_y(generator);
+        point.z = dist_z(generator);
+
+        point.normal_x = dist_nx(generator);
+        point.normal_y = dist_ny(generator);
+        point.normal_z = dist_nz(generator);
+
+        const float norm = point.getNormalVector3fMap().norm();
+
+        point.normal_x /= norm;
+        point.normal_y /= norm;
+        point.normal_z /= norm;
+    }
+    
     // ========================================================================
     //  Compute the model's ppfs
     // ========================================================================
