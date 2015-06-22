@@ -54,9 +54,10 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
  *  \param[out] trans Affine transformation from to model to the scene.
  *  \param[out] correspondence Supporting correspondences from the scene to 
  *  the model.
+ *  \return True if the object appears in the scene, false otherwise.
  */
 template <typename PointT, typename NormalT>
-void ppfmap::PPFMatch<PointT, NormalT>::detect(
+bool ppfmap::PPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr cloud, 
     const NormalsPtr normals, 
     Eigen::Affine3f& trans, 
@@ -88,10 +89,14 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
         getAlignmentToX(point, normal, &affine_s);
         kdtree.radiusSearch(point, radius, indices, distances);
 
-        pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
+        auto pose = getPose(index, indices, cloud, normals, affine_s);
+
+        if (pose.votes > 5) {
+            pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
+        }
     }
 
-    clusterPoses(pose_vector, trans, correspondences);
+    return clusterPoses(pose_vector, trans, correspondences);
 }
 
 
@@ -195,12 +200,17 @@ bool ppfmap::PPFMatch<PointT, NormalT>::similarPoses(
  *  \param[out] trans Average affine transformation for the biggest 
  *  cluster.
  *  \param[out] corr Vector of correspondences supporting the cluster.
+ *  \return True if a cluster was found, false otherwise.
  */
 template <typename PointT, typename NormalT>
-void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
+bool ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
     const std::vector<Pose>& poses, 
     Eigen::Affine3f &trans, 
     pcl::Correspondences& corr) {
+
+    if (!poses.size()) {
+        return false;
+    }
 
     int cluster_idx;
     std::vector<std::pair<int, int> > cluster_votes;
@@ -245,4 +255,6 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
 
     trans.translation().matrix() = translation_average;
     trans.linear().matrix() = Eigen::Quaternionf(rotation_average).normalized().toRotationMatrix();
+
+    return true;
 }

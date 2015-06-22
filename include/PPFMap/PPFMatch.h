@@ -143,8 +143,9 @@ public:
      *  \param[out] trans Affine transformation from to model to the scene.
      *  \param[out] correspondence Supporting correspondences from the scene to 
      *  the model.
+     *  \return True if the object appears in the scene, false otherwise.
      */
-    void detect(const PointCloudPtr cloud, const NormalsPtr normals, 
+    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
                 pcl::Correspondences& correspondences);
 
@@ -181,8 +182,9 @@ private:
      *  \param[out] trans Average affine transformation for the biggest 
      *  cluster.
      *  \param[out] corr Vector of correspondences supporting the cluster.
+     *  \return True if a cluster was found, false otherwise.
      */
-    void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
+    bool clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
     bool use_indices;
