@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
     pcl::VoxelGrid<pcl::PointNormal> sor;
     sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.1f, 0.1f, 0.1f);
+    sor.setLeafSize(0.05f, 0.05f, 0.05f);
     sor.filter(*model_downsampled);
 
 
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
-    const float stddev = 0.01f;
+    const float stddev = 0.0f;
 
     for (auto& point : *model_downsampled) {
 
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setDiscretizationParameters(0.1f, 30.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setMaxRadiusPercent(0.75f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
@@ -182,6 +182,17 @@ int main(int argc, char *argv[]) {
     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer());
     viewer->addPointCloud<pcl::PointNormal>(model_downsampled, "model_downsampled");
     viewer->addPointCloud<pcl::PointNormal>(scene_downsampled, "scene_downsampled");
+
+    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (model_downsampled, model_downsampled, 1, 0.05, "model normals");
+    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (scene_downsampled, scene_downsampled, 1, 0.05, "scene normals");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "model normals"); 
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "scene normals"); 
+
+    /*
+     *while (!viewer->wasStopped()) {
+     *    viewer->spinOnce();
+     *}
+     */
 
     for (const auto& c : *corr) {
         auto& scene_point = scene_downsampled->at(c.index_query);
