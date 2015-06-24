@@ -19,11 +19,20 @@ namespace ppfmap {
         return make_float3(p.normal_x, p.normal_y, p.normal_z); 
     }
 
+    /** \brief Vector dot product.
+     *  \param[in] a 3D vector.
+     *  \param[in] b 3D vector.
+     *  \return Inner product from the two vectors.
+     */
     __device__ __host__
     inline float dot(const float3& a, const float3& b) {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
+    /** \brief Computes the norm of a 3D vector.
+     *  \param[in] v 3D vector.
+     *  \return The norm of the vector.
+     */
     __device__ __host__
     inline float norm(const float3& v) {
         return sqrt(ppfmap::dot(v, v));

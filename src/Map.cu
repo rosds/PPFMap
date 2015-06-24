@@ -22,48 +22,6 @@ struct copy_element_by_index : public thrust::unary_function<uint32_t, uint32_t>
     }
 };
 
-/*
- *
- *struct write_votes {
- *    const uint64_t* model_ppf_ptr;
- *    const float discretization_angle;
- *    uint32_t* votes_ptr;
- *
- *    write_votes(thrust::device_vector<uint64_t> const& model_ppf,
- *                const float disc_angle,
- *                thrust::device_vector<uint32_t> &votes)
- *        : model_ppf_ptr(thrust::raw_pointer_cast(model_ppf.data()))
- *        , discretization_angle(disc_angle)
- *        , votes_ptr(thrust::raw_pointer_cast(votes.data())) {}
- *
- *    template <class Tuple> __device__
- *    void operator()(Tuple t) {
- *
- *        const uint32_t insert_position = thrust::get<0>(t); 
- *        const bool     key_found = thrust::get<1>(t); 
- *        const uint32_t ppf_index = thrust::get<2>(t); 
- *        const uint32_t ppf_count = thrust::get<3>(t); 
- *        const float alpha_s = thrust::get<4>(t); 
- *
- *        if (key_found) {
- *            for (int vote_idx = 0; vote_idx < ppf_count; vote_idx++) {
- *
- *                uint64_t model_ppf_code = model_ppf_ptr[ppf_index + vote_idx];
- *
- *                uint16_t model_index = static_cast<uint16_t>(model_ppf_code >> 16 & 0xFFFF);
- *                float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
- *
- *                uint16_t alpha = static_cast<uint16_t>((alpha_m - alpha_s) / discretization_angle);
- *
- *                uint32_t vote = static_cast<uint32_t>(model_index) << 16 |
- *                                static_cast<uint32_t>(alpha);
- *
- *                votes_ptr[insert_position + vote_idx] =  vote;
- *            }
- *        }
- *    }
- *};
- */
 
 struct VotesExtraction {
     const float discretization_angle;

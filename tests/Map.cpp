@@ -6,7 +6,8 @@
 
 
 BOOST_AUTO_TEST_CASE(constructors) {
-    ppfmap::Map map1;
 
-    BOOST_CHECK(true);
+    /** test empty constructor **/
+    ppfmap::Map map1;
+    BOOST_CHECK_EQUAL(map1.size(), std::size_t(0));
 }
