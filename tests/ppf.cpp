@@ -21,4 +21,10 @@ BOOST_AUTO_TEST_CASE(constructors) {
     BOOST_CHECK_EQUAL(b.f2, 0.5f * static_cast<float>(M_PI));
     BOOST_CHECK_EQUAL(b.f3, 0.5f * static_cast<float>(M_PI));
     BOOST_CHECK_EQUAL(b.f4, 0.0f);
+
+    ppfmap::PPFFeature c(p1, n1, p1, n1);
+    BOOST_CHECK_EQUAL(c.f1, 0.0f);
+    BOOST_CHECK_EQUAL(c.f2, 0.5f * static_cast<float>(M_PI));
+    BOOST_CHECK_EQUAL(c.f3, 0.5f * static_cast<float>(M_PI));
+    BOOST_CHECK_EQUAL(c.f4, 0.0f);
 }

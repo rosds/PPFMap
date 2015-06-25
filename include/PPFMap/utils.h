@@ -78,9 +78,13 @@ namespace ppfmap {
 
         const float norm = ppfmap::norm(d);
 
-        d.x /= norm;
-        d.y /= norm;
-        d.z /= norm;
+        if (norm != 0.0f) {
+            d.x /= norm;
+            d.y /= norm;
+            d.z /= norm;
+        } else {
+            d = make_float3(0.0f, 0.0f, 0.0f);
+        }
 
         f1 = norm;
         f2 = acos(ppfmap::dot(d, r_n));
@@ -208,4 +212,3 @@ namespace ppfmap {
 } // namespace ppfmap
 
 #endif // PPFMAP_UTILS_HH__
-

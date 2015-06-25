@@ -243,10 +243,6 @@ bool ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
     for (const auto& pose : pose_clusters[cluster_votes.back().second]) {
         translation_average += pose.t.translation();
         rotation_average += Eigen::Quaternionf(pose.t.rotation()).coeffs();
-        //corr.push_back(pose.c);
-    }
-
-    for (const auto& pose : poses) {
         corr.push_back(pose.c);
     }
 

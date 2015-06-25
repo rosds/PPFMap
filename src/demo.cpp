@@ -183,10 +183,12 @@ int main(int argc, char *argv[]) {
     viewer->addPointCloud<pcl::PointNormal>(model_downsampled, "model_downsampled");
     viewer->addPointCloud<pcl::PointNormal>(scene_downsampled, "scene_downsampled");
 
-    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (model_downsampled, model_downsampled, 1, 0.05, "model normals");
-    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (scene_downsampled, scene_downsampled, 1, 0.05, "scene normals");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "model normals"); 
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "scene normals"); 
+    /*
+     *viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (model_downsampled, model_downsampled, 1, 0.05, "model normals");
+     *viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (scene_downsampled, scene_downsampled, 1, 0.05, "scene normals");
+     *viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "model normals"); 
+     *viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "scene normals"); 
+     */
 
     /*
      *while (!viewer->wasStopped()) {
