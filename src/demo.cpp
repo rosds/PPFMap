@@ -40,23 +40,25 @@ int main(int argc, char *argv[]) {
     //pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
     //pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
-    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
+/*
+ *    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
+ *
+ *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+ *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+ *    ne.setInputCloud(model);
+ *    ne.setSearchMethod(tree);
+ *    ne.setRadiusSearch(0.03f);
+ *    ne.compute(*model_normals);
+ *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+ *
+ *    pcl::VoxelGrid<pcl::PointNormal> sor;
+ *    sor.setInputCloud(model_with_normals);
+ *    sor.setLeafSize(0.1f, 0.1f, 0.1f);
+ *    sor.filter(*model_downsampled);
+ */
 
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    ne.setInputCloud(model);
-    ne.setSearchMethod(tree);
-    ne.setRadiusSearch(0.03f);
-    ne.compute(*model_normals);
-    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
 
-    pcl::VoxelGrid<pcl::PointNormal> sor;
-    sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.1f, 0.1f, 0.1f);
-    sor.filter(*model_downsampled);
-
-
-    //pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
+    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
     pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
 
 /*
@@ -96,7 +98,7 @@ int main(int argc, char *argv[]) {
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
-    const float stddev = 0.01f;
+    const float stddev = 0.0f;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
 
@@ -151,7 +153,7 @@ int main(int argc, char *argv[]) {
     // ========================================================================
     
     pcl::IndicesPtr reference_point_indices(new std::vector<int>());
-    for (int i = 0; i < scene_downsampled->size(); i += 5) {
+    for (int i = 0; i < scene_downsampled->size(); i += 10) {
         const auto& point = scene_downsampled->at(i);
         if (pcl::isFinite(point)) {
             reference_point_indices->push_back(i); 
@@ -161,9 +163,9 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.007f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(0.75f);
+    ppf_matching.setDiscretizationParameters(0.003f, 6.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.05f, 6.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setMaxRadiusPercent(0.45f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
@@ -176,6 +178,7 @@ int main(int argc, char *argv[]) {
     timer.reset();
     ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
     std::cout << "Object detection: " << timer.getTimeSeconds() << "s" <<  std::endl;
+
 
     // ========================================================================
     //  Visualize the clouds and the matching

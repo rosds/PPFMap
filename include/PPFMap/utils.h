@@ -29,6 +29,21 @@ namespace ppfmap {
         return sqrt(ppfmap::dot(v, v));
     }
 
+    __device__ __host__
+    inline float3 cross(const float3& a, const float3& b) {
+        float3 c;
+        c.x = a.y * b.z - a.z * b.y;
+        c.y = a.z * b.x - a.x * b.z;
+        c.z = a.x * b.y - a.y * b.x;
+        return c;
+    }
+
+    __device__ __host__
+    inline float angleBetween(const float3& a, const float3& b) {
+        float3 c = ppfmap::cross(a, b);
+        return atan2f(ppfmap::norm(c), ppfmap::dot(a, b));
+    }
+
     /** \brief Concatenate each discretized component of the PPF vector into a 
      * 32 bit unsigned int.
      *  \param[in] f1 First PPF component.
@@ -69,14 +84,20 @@ namespace ppfmap {
 
         const float norm = ppfmap::norm(d);
 
-        d.x /= norm;
-        d.y /= norm;
-        d.z /= norm;
+        if (norm != 0.0f) {
+            d.x /= norm;
+            d.y /= norm;
+            d.z /= norm;
+        } else {
+            d.x = 0.0f;
+            d.y = 0.0f;
+            d.z = 0.0f;
+        }
 
         f1 = norm;
-        f2 = acos(ppfmap::dot(d, r_n));
-        f3 = acos(ppfmap::dot(d, p_n));
-        f4 = acos(ppfmap::dot(p_n, r_n));
+        f2 = ppfmap::angleBetween(d, r_n);
+        f3 = ppfmap::angleBetween(d, p_n);
+        f4 = ppfmap::angleBetween(p_n, r_n);
 
         uint32_t d1 = static_cast<uint32_t>(f1 / disc_dist);
         uint32_t d2 = static_cast<uint32_t>(f2 / disc_angle);

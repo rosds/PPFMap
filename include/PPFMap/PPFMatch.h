@@ -148,7 +148,6 @@ public:
     bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
                 pcl::Correspondences& correspondences);
-
 private:
 
     /** \brief Perform the voting and accumulation of the PPF features in the 
