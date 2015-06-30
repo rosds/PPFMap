@@ -92,33 +92,13 @@ int main(int argc, char *argv[]) {
  *    sor.filter(*scene_downsampled);
  */
 
-
-    // ========================================================================
-    //  Transform the model cloud with a random rotation
-    // ========================================================================
-
-    Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
-    trans(0,3) = -1.0f;
-
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine generator(seed);
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-
-    Eigen::Matrix3f rot;
-    rot = Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitX()) *
-          Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitY()) *
-          Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitZ());
-
-
-    trans.block<3, 3>(0, 0) = rot;
-
-    pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
-
     // ========================================================================
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
     const float stddev = 0.01f;
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
 
     for (auto& point : *model_downsampled) {
 
@@ -143,6 +123,28 @@ int main(int argc, char *argv[]) {
         point.normal_y /= norm;
         point.normal_z /= norm;
     }
+
+    // ========================================================================
+    //  Transform the model cloud with a random rotation
+    // ========================================================================
+
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*model_downsampled, centroid);
+
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+    Eigen::AngleAxisf rotation(
+        Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitX()) *
+        Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitY()) *
+        Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitZ()));
+
+    Eigen::Translation3f toOrigin(-centroid.head<3>());
+    Eigen::Translation3f fromOrigin(centroid.head<3>());
+    Eigen::Translation3f aditional(Eigen::Vector3f::Constant(-2.0f));
+
+    Eigen::Affine3f trans(aditional * fromOrigin * rotation * toOrigin);
+
+    pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
     
     // ========================================================================
     //  Compute the model's ppfs
@@ -151,7 +153,7 @@ int main(int argc, char *argv[]) {
     pcl::IndicesPtr reference_point_indices(new std::vector<int>());
     for (int i = 0; i < scene_downsampled->size(); i += 5) {
         const auto& point = scene_downsampled->at(i);
-        if (pcl::isFinite(point) && point.curvature > 0.007) {
+        if (pcl::isFinite(point)) {
             reference_point_indices->push_back(i); 
         }
     }
@@ -159,7 +161,7 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setDiscretizationParameters(0.007f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setMaxRadiusPercent(0.75f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
