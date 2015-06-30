@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
-    const float stddev = 0.0f;
+    const float stddev = 0.01f;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
 
@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
     ppf_matching.setDiscretizationParameters(0.003f, 6.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.05f, 6.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setMaxRadiusPercent(0.45f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
@@ -185,6 +185,12 @@ int main(int argc, char *argv[]) {
     // ========================================================================
 
     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer());
+
+    viewer->setCameraPosition(
+        1.93776, 2.52103, -4.44761,         // Camera position.
+        -0.510879, -0.502814, 0.516093,     // Focal point.
+        -0.791964, 0.610274, -0.0189099);       // Up vector.
+
     viewer->addPointCloud<pcl::PointNormal>(model_downsampled, "model_downsampled");
     viewer->addPointCloud<pcl::PointNormal>(scene_downsampled, "scene_downsampled");
 

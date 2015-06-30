@@ -129,9 +129,6 @@ namespace ppfmap {
     inline void getAlignmentToX<float3, float3> (
         const float3 point, const float3 normal, float (*affine)[12]) {
     
-        // Calculate the angle between the normal and the X axis.
-        float rotation_angle = acosf(normal.x);
-
         // Rotation axis lays on the plane y-z (i.e. u = 0)
         float v;
         float w;
@@ -146,6 +143,9 @@ namespace ppfmap {
             v = normal.z;
             w = - normal.y;
         }
+
+        // Calculate the angle between the normal and the X axis.
+        float rotation_angle = angleBetween(normal, make_float3(1.0f, 0.0f,0.0f));
 
         // Normalize vector
         float norm = sqrt(v * v + w * w);
