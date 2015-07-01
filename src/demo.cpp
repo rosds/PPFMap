@@ -163,9 +163,9 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.003f, 6.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(0.45f);
+    ppf_matching.setDiscretizationParameters(0.0005f, 6.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.2f, 20.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setMaxRadiusPercent(1.0f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();

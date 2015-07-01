@@ -35,14 +35,6 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
     model_map_initialized = true;
 
     float diameter = model_ppf_map->getCloudDiameter();
-
-    if (diameter * neighborhood_percentage / discretization_distance > 255.0f) {
-        pcl::console::print_warn(stderr, "Warning: possible hash collitions due to distance discretization\n");
-    }
-
-    if (2.0f * static_cast<float>(M_PI) / discretization_angle > 255.0f) {
-        pcl::console::print_warn(stderr, "Warning: possible hash collitions due to angle discretization\n");
-    }
 }
 
 

@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 #include <pcl/cuda/pcl_cuda_base.h>
 
+#include <PPFMap/murmur.h>
 
 namespace ppfmap {
 
@@ -43,20 +44,6 @@ namespace ppfmap {
         float3 c = ppfmap::cross(a, b);
         return atan2f(ppfmap::norm(c), ppfmap::dot(a, b));
     }
-
-    /** \brief Concatenate each discretized component of the PPF vector into a 
-     * 32 bit unsigned int.
-     *  \param[in] f1 First PPF component.
-     *  \param[in] f2 Second PPF component.
-     *  \param[in] f3 Third PPF component.
-     *  \param[in] f4 Fourth PPF component.
-     *  \return Unsigned int with the concatenated components
-     */
-    __device__ __host__
-    inline uint32_t hashPPF(uint32_t f1, uint32_t f2, uint32_t f3, uint32_t f4) {
-        return f1 << 24 | f2 << 16 | f3 << 8 | f4;
-    }
-
 
     template <typename PointT, typename NormalT>
     __device__ __host__
@@ -99,12 +86,14 @@ namespace ppfmap {
         f3 = ppfmap::angleBetween(d, p_n);
         f4 = ppfmap::angleBetween(p_n, r_n);
 
-        uint32_t d1 = static_cast<uint32_t>(f1 / disc_dist);
-        uint32_t d2 = static_cast<uint32_t>(f2 / disc_angle);
-        uint32_t d3 = static_cast<uint32_t>(f3 / disc_angle);
-        uint32_t d4 = static_cast<uint32_t>(f4 / disc_angle);
+        uint32_t feature[4];
+        feature[0] = static_cast<uint32_t>(f1 / disc_dist);
+        feature[1] = static_cast<uint32_t>(f2 / disc_angle);
+        feature[2] = static_cast<uint32_t>(f3 / disc_angle);
+        feature[3] = static_cast<uint32_t>(f4 / disc_angle);
 
-        return hashPPF(d1, d2, d3, d4);
+        // Return the hash of the feature.
+        return murmurppf(feature);
     }
 
     
