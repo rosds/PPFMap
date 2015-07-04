@@ -89,11 +89,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
         getAlignmentToX(point, normal, &affine_s);
         kdtree.radiusSearch(point, radius, indices, distances);
 
-        auto pose = getPose(index, indices, cloud, normals, affine_s);
-
-        if (pose.votes > 5) {
-            pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
-        }
+        pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
     }
 
     return clusterPoses(pose_vector, trans, correspondences);
@@ -249,6 +245,10 @@ bool ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
         rotation_average += Eigen::Quaternionf(pose.t.rotation()).coeffs();
         corr.push_back(pose.c);
     }
+
+    //for (const auto& pose : poses) {
+        //corr.push_back(pose.c);
+    //}
 
     translation_average /= static_cast<float> (pose_clusters[cluster_votes.back().second].size());
     rotation_average /= static_cast<float> (pose_clusters[cluster_votes.back().second].size());

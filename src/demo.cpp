@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
     pcl::VoxelGrid<pcl::PointNormal> sor;
     sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.1f, 0.1f, 0.1f);
+    sor.setLeafSize(0.05f, 0.05f, 0.05f);
     sor.filter(*model_downsampled);
 
 
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
     pcl::IndicesPtr reference_point_indices(new std::vector<int>());
     for (int i = 0; i < scene_downsampled->size(); i += 5) {
         const auto& point = scene_downsampled->at(i);
-        if (pcl::isFinite(point) && point.curvature > 0.007) {
+        if (pcl::isFinite(point) && point.curvature > 0.003) {
             reference_point_indices->push_back(i); 
         }
     }
@@ -159,9 +159,9 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
 
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(0.75f);
+    ppf_matching.setDiscretizationParameters(0.05f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.1f, 24.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setMaxRadiusPercent(0.6f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
