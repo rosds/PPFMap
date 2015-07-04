@@ -81,14 +81,54 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
         getAlignmentToX(point, normal, &affine_s);
         kdtree.radiusSearch(point, radius, indices, distances);
 
-        auto pose = getPose(index, indices, cloud, normals, affine_s);
+        pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
+    }
+    return clusterPoses(pose_vector, trans, correspondences);
+}
 
-        if (pose.votes > 5) {
-            pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
+
+template <typename PointT, typename NormalT>
+bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+    const PointCloudPtr cloud, 
+    const NormalsPtr normals, 
+    std::vector<Pose>& poses) {
+
+    float affine_s[12];
+    std::vector<Pose> pose_vector;
+    const float radius = model_ppf_map->getCloudDiameter() * neighborhood_percentage;
+
+    std::vector<int> indices;
+    std::vector<float> distances;
+
+    pcl::KdTreeFLANN<PointT> kdtree;
+    kdtree.setInputCloud(cloud);
+
+    if (!use_indices) {
+        ref_point_indices->resize(cloud->size());
+        for (int i = 0; i < cloud->size(); i++) {
+            (*ref_point_indices)[i] = i;
         }
     }
 
-    return clusterPoses(pose_vector, trans, correspondences);
+    poses.clear();
+    for (const auto index : *ref_point_indices) {
+        const auto& point = cloud->at(index);
+        const auto& normal = normals->at(index);
+
+        if (!pcl::isFinite(point)) continue;
+
+        getAlignmentToX(point, normal, &affine_s);
+        kdtree.radiusSearch(point, radius, indices, distances);
+
+        poses.push_back(getPose(index, indices, cloud, normals, affine_s));
+    }
+
+    sort(poses.begin(), poses.end(), 
+         [](const Pose& a, const Pose& b) -> bool { 
+             return a.votes > b.votes; 
+         });
+
+    return true;
 }
 
 
@@ -137,6 +177,7 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
         // Compute the alpha_s angle
         const Eigen::Vector3f transformed(Tsg_map * point.getVector4fMap());
         alpha_s_list[i] = atan2f(-transformed(2), transformed(1));
+
     }
 
     int index;
