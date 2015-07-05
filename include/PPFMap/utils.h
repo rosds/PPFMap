@@ -27,7 +27,7 @@ namespace ppfmap {
 
     __device__ __host__
     inline float norm(const float3& v) {
-        return sqrt(ppfmap::dot(v, v));
+        return sqrtf(ppfmap::dot(v, v));
     }
 
     __device__ __host__
@@ -39,6 +39,12 @@ namespace ppfmap {
         return c;
     }
 
+    /** \brief Returns the angle between two vectors.
+     *  \param[in] a First vector.
+     *  \param[in] b Second vector.
+     *  \return The angle between the two vectors. The value of the angle is 
+     *  allways between 0 and pi.
+     */
     __device__ __host__
     inline float angleBetween(const float3& a, const float3& b) {
         float3 c = ppfmap::cross(a, b);
@@ -76,11 +82,10 @@ namespace ppfmap {
             d.y /= norm;
             d.z /= norm;
         } else {
-            d.x = 0.0f;
-            d.y = 0.0f;
-            d.z = 0.0f;
+            d = make_float3(0.0f, 0.0f, 0.0f);
         }
 
+        // These 4 components should always be positive
         f1 = norm;
         f2 = ppfmap::angleBetween(d, r_n);
         f3 = ppfmap::angleBetween(d, p_n);

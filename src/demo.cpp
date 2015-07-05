@@ -40,23 +40,24 @@ int main(int argc, char *argv[]) {
     //pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
     //pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
-    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
+/*
+ *    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
+ *
+ *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+ *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+ *    ne.setInputCloud(model);
+ *    ne.setSearchMethod(tree);
+ *    ne.setRadiusSearch(0.03f);
+ *    ne.compute(*model_normals);
+ *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+ *
+ *    pcl::VoxelGrid<pcl::PointNormal> sor;
+ *    sor.setInputCloud(model_with_normals);
+ *    sor.setLeafSize(0.05f, 0.05f, 0.05f);
+ *    sor.filter(*model_downsampled);
+ */
 
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    ne.setInputCloud(model);
-    ne.setSearchMethod(tree);
-    ne.setRadiusSearch(0.03f);
-    ne.compute(*model_normals);
-    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
-
-    pcl::VoxelGrid<pcl::PointNormal> sor;
-    sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.05f, 0.05f, 0.05f);
-    sor.filter(*model_downsampled);
-
-
-    //pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
+    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
     pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
 
 /*
@@ -161,9 +162,9 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
     std::vector<ppfmap::Pose> poses;
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.0005f, 6.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.2f, 20.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(1.0f);
+    ppf_matching.setMaxRadiusPercent(0.7f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
