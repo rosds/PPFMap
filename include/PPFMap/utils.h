@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 #include <pcl/cuda/pcl_cuda_base.h>
 
+#include <PPFMap/murmur.h>
 
 namespace ppfmap {
 
@@ -35,22 +36,29 @@ namespace ppfmap {
      */
     __device__ __host__
     inline float norm(const float3& v) {
-        return sqrt(ppfmap::dot(v, v));
+        return sqrtf(ppfmap::dot(v, v));
     }
 
-    /** \brief Concatenate each discretized component of the PPF vector into a 
-     * 32 bit unsigned int.
-     *  \param[in] f1 First PPF component.
-     *  \param[in] f2 Second PPF component.
-     *  \param[in] f3 Third PPF component.
-     *  \param[in] f4 Fourth PPF component.
-     *  \return Unsigned int with the concatenated components
+    __device__ __host__
+    inline float3 cross(const float3& a, const float3& b) {
+        float3 c;
+        c.x = a.y * b.z - a.z * b.y;
+        c.y = a.z * b.x - a.x * b.z;
+        c.z = a.x * b.y - a.y * b.x;
+        return c;
+    }
+
+    /** \brief Returns the angle between two vectors.
+     *  \param[in] a First vector.
+     *  \param[in] b Second vector.
+     *  \return The angle between the two vectors. The value of the angle is 
+     *  allways between 0 and pi.
      */
     __device__ __host__
-    inline uint32_t hashPPF(uint32_t f1, uint32_t f2, uint32_t f3, uint32_t f4) {
-        return f1 << 24 | f2 << 16 | f3 << 8 | f4;
+    inline float angleBetween(const float3& a, const float3& b) {
+        float3 c = ppfmap::cross(a, b);
+        return atan2f(ppfmap::norm(c), ppfmap::dot(a, b));
     }
-
 
     template <typename PointT, typename NormalT>
     __device__ __host__
@@ -86,17 +94,20 @@ namespace ppfmap {
             d = make_float3(0.0f, 0.0f, 0.0f);
         }
 
+        // These 4 components should always be positive
         f1 = norm;
-        f2 = acos(ppfmap::dot(d, r_n));
-        f3 = acos(ppfmap::dot(d, p_n));
-        f4 = acos(ppfmap::dot(p_n, r_n));
+        f2 = ppfmap::angleBetween(d, r_n);
+        f3 = ppfmap::angleBetween(d, p_n);
+        f4 = ppfmap::angleBetween(p_n, r_n);
 
-        uint32_t d1 = static_cast<uint32_t>(f1 / disc_dist);
-        uint32_t d2 = static_cast<uint32_t>(f2 / disc_angle);
-        uint32_t d3 = static_cast<uint32_t>(f3 / disc_angle);
-        uint32_t d4 = static_cast<uint32_t>(f4 / disc_angle);
+        uint32_t feature[4];
+        feature[0] = static_cast<uint32_t>(f1 / disc_dist);
+        feature[1] = static_cast<uint32_t>(f2 / disc_angle);
+        feature[2] = static_cast<uint32_t>(f3 / disc_angle);
+        feature[3] = static_cast<uint32_t>(f4 / disc_angle);
 
-        return hashPPF(d1, d2, d3, d4);
+        // Return the hash of the feature.
+        return murmurppf(feature);
     }
 
     
@@ -121,9 +132,6 @@ namespace ppfmap {
     inline void getAlignmentToX<float3, float3> (
         const float3 point, const float3 normal, float (*affine)[12]) {
     
-        // Calculate the angle between the normal and the X axis.
-        float rotation_angle = acosf(normal.x);
-
         // Rotation axis lays on the plane y-z (i.e. u = 0)
         float v;
         float w;
@@ -138,6 +146,9 @@ namespace ppfmap {
             v = normal.z;
             w = - normal.y;
         }
+
+        // Calculate the angle between the normal and the X axis.
+        float rotation_angle = angleBetween(normal, make_float3(1.0f, 0.0f,0.0f));
 
         // Normalize vector
         float norm = sqrt(v * v + w * w);

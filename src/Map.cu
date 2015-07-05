@@ -61,12 +61,23 @@ struct VotesExtraction {
                 uint64_t model_ppf_code = ppf_codes[ppf_index[i] + vote_idx];
 
                 uint16_t model_index = static_cast<uint16_t>(model_ppf_code >> 16 & 0xFFFF);
-                float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
 
-                uint16_t alpha = static_cast<uint16_t>((alpha_m - alpha_s[i]) / discretization_angle);
+                // Un-discretize the alpha_m angle.
+                float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
+                alpha_m -= static_cast<float>(M_PI);
+
+                // Normalize the joint angle.
+                float alpha = alpha_m - alpha_s[i];
+                alpha = alpha - static_cast<float>(M_2_PI) * 
+                        floor((alpha + static_cast<float>(M_PI)) / static_cast<float>(M_2_PI));
+
+                // Now alpha should be in [-pi, pi].
+                // We proceed by discretizing this angle for the final vote.
+                alpha += static_cast<float>(M_PI);
+                uint16_t alpha_disc = static_cast<uint16_t>(alpha / discretization_angle);
 
                 uint32_t vote = static_cast<uint32_t>(model_index) << 16 |
-                                static_cast<uint32_t>(alpha);
+                                static_cast<uint32_t>(alpha_disc);
 
                 votes_ptr[insert[i] + vote_idx] =  vote;
             }
@@ -147,10 +158,9 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
     : discretization_distance(disc_dist)
     , discretization_angle(disc_angle) {
 
+    float affine[12];
     const std::size_t number_of_points = h_points.size();
     const std::size_t number_of_pairs = number_of_points * number_of_points;
-
-    float affine[12];
 
     pcl::cuda::Device<float3>::type d_points(h_points);
     pcl::cuda::Device<float3>::type d_normals(h_normals);
@@ -297,6 +307,9 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
     const uint32_t winner = unique_votes[position];
 
     m_idx = static_cast<int>(winner >> 16);
-    alpha = static_cast<float>(winner & 0xFFFF) * discretization_angle;
+
+    float alpha_disc = static_cast<float>(winner & 0xFFFF) * discretization_angle;
+    alpha = alpha_disc - static_cast<float>(M_PI);
+
     max_votes = static_cast<int>(*iter);
 }

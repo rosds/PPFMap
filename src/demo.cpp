@@ -40,23 +40,24 @@ int main(int argc, char *argv[]) {
     //pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
     //pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
-    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model);
+/*
+ *    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
+ *
+ *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+ *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+ *    ne.setInputCloud(model);
+ *    ne.setSearchMethod(tree);
+ *    ne.setRadiusSearch(0.03f);
+ *    ne.compute(*model_normals);
+ *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+ *
+ *    pcl::VoxelGrid<pcl::PointNormal> sor;
+ *    sor.setInputCloud(model_with_normals);
+ *    sor.setLeafSize(0.05f, 0.05f, 0.05f);
+ *    sor.filter(*model_downsampled);
+ */
 
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    ne.setInputCloud(model);
-    ne.setSearchMethod(tree);
-    ne.setRadiusSearch(0.05f);
-    ne.compute(*model_normals);
-    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
-
-    pcl::VoxelGrid<pcl::PointNormal> sor;
-    sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.05f, 0.05f, 0.05f);
-    sor.filter(*model_downsampled);
-
-
-    //pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
+    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
     pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
 
 /*
@@ -92,7 +93,6 @@ int main(int argc, char *argv[]) {
  *    sor.filter(*scene_downsampled);
  */
 
-
     // ========================================================================
     //  Transform the model cloud with a random rotation
     // ========================================================================
@@ -119,7 +119,9 @@ int main(int argc, char *argv[]) {
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
-    const float stddev = 0.0f;
+    const float stddev = 0.01f;
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
 
     for (auto& point : *model_downsampled) {
 
@@ -144,13 +146,35 @@ int main(int argc, char *argv[]) {
         point.normal_y /= norm;
         point.normal_z /= norm;
     }
+
+    // ========================================================================
+    //  Transform the model cloud with a random rotation
+    // ========================================================================
+
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*model_downsampled, centroid);
+
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+    Eigen::AngleAxisf rotation(
+        Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitX()) *
+        Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitY()) *
+        Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitZ()));
+
+    Eigen::Translation3f toOrigin(-centroid.head<3>());
+    Eigen::Translation3f fromOrigin(centroid.head<3>());
+    Eigen::Translation3f aditional(Eigen::Vector3f::Constant(-2.0f));
+
+    Eigen::Affine3f trans(aditional * fromOrigin * rotation * toOrigin);
+
+    pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, trans);
     
     // ========================================================================
     //  Compute the model's ppfs
     // ========================================================================
     
     pcl::IndicesPtr reference_point_indices(new std::vector<int>());
-    for (int i = 0; i < scene_downsampled->size(); i += 5) {
+    for (int i = 0; i < scene_downsampled->size(); i += 10) {
         const auto& point = scene_downsampled->at(i);
         if (pcl::isFinite(point)) {
             reference_point_indices->push_back(i); 
@@ -158,7 +182,7 @@ int main(int argc, char *argv[]) {
     }
 
     pcl::StopWatch timer;
-
+    std::vector<ppfmap::Pose> poses;
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
     ppf_matching.setDiscretizationParameters(0.001f, 6.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
@@ -173,47 +197,52 @@ int main(int argc, char *argv[]) {
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
 
     timer.reset();
-    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
+    //ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
+    ppf_matching.detect(scene_downsampled, scene_downsampled, poses);
     std::cout << "Object detection: " << timer.getTimeSeconds() << "s" <<  std::endl;
+
 
     // ========================================================================
     //  Visualize the clouds and the matching
     // ========================================================================
 
     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer());
+
     viewer->setCameraPosition(
-            3.38734, 0.675107, -4.93392,         // Camera position.
-            -0.679712, -0.691331, 0.894326,     // Focal point
-            -0.514279, 0.8423, -0.161395);       // Up vector.
+        1.93776, 2.52103, -4.44761,         // Camera position.
+        -0.510879, -0.502814, 0.516093,     // Focal point.
+        -0.791964, 0.610274, -0.0189099);       // Up vector.
 
     viewer->addPointCloud<pcl::PointNormal>(model_downsampled, "model_downsampled");
     viewer->addPointCloud<pcl::PointNormal>(scene_downsampled, "scene_downsampled");
 
-    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (model_downsampled, model_downsampled, 1, 0.05, "model normals");
-    viewer->addPointCloudNormals<pcl::PointNormal, pcl::PointNormal> (scene_downsampled, scene_downsampled, 1, 0.05, "scene normals");
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "model normals"); 
-    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 1.0, "scene normals"); 
+/*
+ *    for (const auto& c : *corr) {
+ *        auto& scene_point = scene_downsampled->at(c.index_query);
+ *        auto& model_point = model_downsampled->at(c.index_match);
+ *
+ *        sprintf(name, "line_%d_%d", c.index_query, c.index_match);    
+ *        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
+ *    }
+ */
 
-    while (!viewer->wasStopped()) {
-        viewer->spinOnce();
-    }
-    viewer->resetStoppedFlag();
+    for (const auto& pose : poses) {
+    
+        viewer->removeShape("reference_line");
+        viewer->removePointCloud("model_transformed");
+        pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed(new pcl::PointCloud<pcl::PointNormal>());
+        pcl::transformPointCloud(*model_downsampled, *model_transformed, pose.t);
+        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
+        viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");
 
-    for (const auto& c : *corr) {
-        auto& scene_point = scene_downsampled->at(c.index_query);
-        auto& model_point = model_downsampled->at(c.index_match);
+        auto& scene_point = scene_downsampled->at(pose.c.index_query);
+        auto& model_point = model_downsampled->at(pose.c.index_match);
+        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, "reference_line");
 
-        sprintf(name, "line_%d_%d", c.index_query, c.index_match);    
-        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
-    }
-
-    pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed(new pcl::PointCloud<pcl::PointNormal>());
-    pcl::transformPointCloud(*model_downsampled, *model_transformed, T);
-    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
-    viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");
-
-    while (!viewer->wasStopped()) {
-        viewer->spinOnce();
+        while (!viewer->wasStopped()) {
+            viewer->spinOnce();
+        }
+        viewer->resetStoppedFlag();
     }
 
     return 0;
