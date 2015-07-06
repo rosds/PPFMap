@@ -14,7 +14,6 @@
 
 namespace ppfmap {
 
-
 /** \brief Represents a pose supported by a correspondence.
  */
 struct Pose {
@@ -149,6 +148,15 @@ public:
                 Eigen::Affine3f& trans, 
                 pcl::Correspondences& correspondences);
 
+    /** \brief Search the given scene for the object and returns a vector with 
+     * the poses sorted by the votes obtained in the Hough space.
+     *  
+     *  \param[in] cloud Pointer to the scene cloud where to look for the 
+     *  object.
+     *  \param[in] normals Pointer to the cloud containing the scene normals.
+     */
+    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
+                std::vector<Pose>& poses);
 private:
 
     /** \brief Perform the voting and accumulation of the PPF features in the 

@@ -8,7 +8,6 @@ __constant__ float affine[12];
 
 namespace ppfmap {
 
-
     /** \brief Functor for calcukating the PPF Features and also the alpha 
      * angle.
      *
@@ -70,12 +69,15 @@ namespace ppfmap {
             float d_z = point.x * affine[8] + 
                         point.y * affine[9] + 
                         point.z * affine[10] + affine[11];
+            float alpha = atan2f(-d_z, d_y);
 
-            uint16_t alpha = static_cast<int16_t>(atan2f(-d_z, d_y) / discretization_angle);
+            // Discretize alpha
+            alpha += static_cast<float>(M_PI); // alpha \in [0, 2pi]
+            uint16_t alpha_disc = static_cast<uint16_t>(alpha / discretization_angle);
             
             return (static_cast<uint64_t>(hk) << 32) | 
                    (static_cast<uint64_t>(id) << 16) | 
-                   (static_cast<uint64_t>(alpha));
+                   (static_cast<uint64_t>(alpha_disc));
         }
     };
 

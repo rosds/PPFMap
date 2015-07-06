@@ -33,16 +33,6 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
                                     discretization_angle);
 
     model_map_initialized = true;
-
-    float diameter = model_ppf_map->getCloudDiameter();
-
-    if (diameter * neighborhood_percentage / discretization_distance > 255.0f) {
-        pcl::console::print_warn(stderr, "Warning: possible hash collitions due to distance discretization\n");
-    }
-
-    if (2.0f * static_cast<float>(M_PI) / discretization_angle > 255.0f) {
-        pcl::console::print_warn(stderr, "Warning: possible hash collitions due to angle discretization\n");
-    }
 }
 
 
@@ -91,8 +81,59 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
 
         pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
     }
-
     return clusterPoses(pose_vector, trans, correspondences);
+}
+
+
+/** \brief Search the given scene for the object and returns a vector with 
+ * the poses sorted by the votes obtained in the Hough space.
+ *  
+ *  \param[in] cloud Pointer to the scene cloud where to look for the 
+ *  object.
+ *  \param[in] normals Pointer to the cloud containing the scene normals.
+ */
+template <typename PointT, typename NormalT>
+bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+    const PointCloudPtr cloud, 
+    const NormalsPtr normals, 
+    std::vector<Pose>& poses) {
+
+    float affine_s[12];
+    std::vector<Pose> pose_vector;
+    const float radius = model_ppf_map->getCloudDiameter() * neighborhood_percentage;
+
+    std::vector<int> indices;
+    std::vector<float> distances;
+
+    pcl::KdTreeFLANN<PointT> kdtree;
+    kdtree.setInputCloud(cloud);
+
+    if (!use_indices) {
+        ref_point_indices->resize(cloud->size());
+        for (int i = 0; i < cloud->size(); i++) {
+            (*ref_point_indices)[i] = i;
+        }
+    }
+
+    poses.clear();
+    for (const auto index : *ref_point_indices) {
+        const auto& point = cloud->at(index);
+        const auto& normal = normals->at(index);
+
+        if (!pcl::isFinite(point)) continue;
+
+        getAlignmentToX(point, normal, &affine_s);
+        kdtree.radiusSearch(point, radius, indices, distances);
+
+        poses.push_back(getPose(index, indices, cloud, normals, affine_s));
+    }
+
+    sort(poses.begin(), poses.end(), 
+         [](const Pose& a, const Pose& b) -> bool { 
+             return a.votes > b.votes; 
+         });
+
+    return true;
 }
 
 
@@ -118,10 +159,10 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
     Eigen::Map<const Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tsg_map(affine_s);
 
     float affine_m[12];
-    std::size_t n = indices.size();
+    const std::size_t n = indices.size();
 
     const auto& ref_point = cloud->at(reference_index);
-    const auto& ref_normal = cloud->at(reference_index);
+    const auto& ref_normal = normals->at(reference_index);
 
     thrust::host_vector<uint32_t> hash_list(n);
     thrust::host_vector<float> alpha_s_list(n);
@@ -141,11 +182,13 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
         // Compute the alpha_s angle
         const Eigen::Vector3f transformed(Tsg_map * point.getVector4fMap());
         alpha_s_list[i] = atan2f(-transformed(2), transformed(1));
+
     }
 
     int index;
     float alpha;
     int votes;
+
     model_ppf_map->searchBestMatch(hash_list, alpha_s_list, index, alpha, votes);
 
     const auto& model_point = model_->at(index);
@@ -164,6 +207,7 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
     final_pose.c = pcl::Correspondence(reference_index, index, 0.0f);
     final_pose.t = Tsg.inverse() * Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitX()) * Tmg;
     final_pose.votes = votes;
+
     return final_pose;
 }
 
