@@ -27,6 +27,7 @@ struct VotesExtraction {
     const float discretization_angle;
 
     const float* alpha_s;
+    const float* alpha_m;
 
     const uint64_t* ppf_codes;
     const bool* ppf_found;
@@ -38,6 +39,7 @@ struct VotesExtraction {
 
     VotesExtraction(const thrust::device_vector<float>& alphas,
                     const thrust::device_vector<uint64_t>& map_codes,
+                    const thrust::device_vector<float>& alpha_m_array,
                     const thrust::device_vector<bool>& map_found,
                     const thrust::device_vector<uint32_t>& map_index,
                     const thrust::device_vector<uint32_t>& map_count,
@@ -46,6 +48,7 @@ struct VotesExtraction {
                     thrust::device_vector<uint32_t>& votes)
         : alpha_s(thrust::raw_pointer_cast(alphas.data()))
         , ppf_codes(thrust::raw_pointer_cast(map_codes.data()))
+        , alpha_m(thrust::raw_pointer_cast(alpha_m_array.data()))
         , ppf_found(thrust::raw_pointer_cast(map_found.data()))
         , ppf_index(thrust::raw_pointer_cast(map_index.data()))
         , ppf_count(thrust::raw_pointer_cast(map_count.data()))
@@ -62,12 +65,11 @@ struct VotesExtraction {
 
                 uint16_t model_index = static_cast<uint16_t>(model_ppf_code >> 16 & 0xFFFF);
 
-                // Un-discretize the alpha_m angle.
-                float alpha_m = static_cast<float>(model_ppf_code & 0xFFFF) * discretization_angle;
-                alpha_m -= static_cast<float>(M_PI);
+                // Get alpha_m
+                uint16_t alpha_ref = static_cast<uint16_t>(model_ppf_code & 0xFFFF); 
 
                 // Normalize the joint angle.
-                float alpha = alpha_m - alpha_s[i];
+                float alpha = alpha_m[alpha_ref] - alpha_s[i];
                 alpha = alpha - static_cast<float>(M_2_PI) * 
                         floor((alpha + static_cast<float>(M_PI)) / static_cast<float>(M_2_PI));
 
@@ -166,6 +168,7 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
     pcl::cuda::Device<float3>::type d_normals(h_normals);
 
     ppf_codes.resize(number_of_pairs);
+    alpha_m.resize(number_of_pairs);
 
     float max_distance = 0.0f;
     for (int i = 0; i < number_of_points; i++) {
@@ -174,16 +177,26 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
 
         ppfmap::getAlignmentToX(point_position, point_normal, &affine);
 
-        ppfmap::PPFEstimationKernel ppfe(point_position, point_normal, i,
-                                         discretization_distance,
-                                         discretization_angle,
-                                         affine);
+        ppfmap::PPFEstimationKernel ppfe(
+            point_position,                     // Reference point
+            point_normal,                       // Reference normal
+            i,                                  // Reference point index 
+            discretization_distance,            // Discretization step
+            discretization_angle,               // Discretization angle
+            affine,                             // X axis alignment transformation
+            number_of_points,                   // Number of points in the model
+            d_points,                           // Device array of points
+            d_normals,                          // Device array of normals
+            alpha_m,                            // [out] Array with alpha_m angles
+            ppf_codes                           // [out] Array with PPF codes
+        );
 
-        thrust::transform(d_points.begin(), d_points.end(),
-                          d_normals.begin(),
-                          ppf_codes.begin() + i * number_of_points,
-                          ppfe);
+        // Compute the ppf code and alpha_m angle for each point to the 
+        // reference point
+        thrust::counting_iterator<int> it(0);
+        thrust::for_each(it, it + number_of_points, ppfe);
 
+        // Look for the maximum distance between pairs
         float max_pair_dist = ppfmap::maxDistanceToPoint<pcl::cuda::Device>(point_position, d_points);
 
         if (max_distance < max_pair_dist) {
@@ -279,6 +292,7 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
 
     VotesExtraction write_votes(d_alpha_s_list, 
                                 ppf_codes, 
+                                alpha_m,
                                 d_key_found, d_ppf_index, 
                                 d_ppf_count, d_insert_pos,
                                 discretization_angle,

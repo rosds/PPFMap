@@ -90,6 +90,7 @@ private:
     thrust::device_vector<uint32_t> ppf_index;
     thrust::device_vector<uint32_t> ppf_count;
 
+    thrust::device_vector<float> alpha_m;
 }; // class Map
 
 } // namespace ppfmap

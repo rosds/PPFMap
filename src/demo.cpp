@@ -94,32 +94,10 @@ int main(int argc, char *argv[]) {
  */
 
     // ========================================================================
-    //  Transform the model cloud with a random rotation
-    // ========================================================================
-    
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine generator(seed);
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-
-    Eigen::AngleAxisf rotation(Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitX()) *
-                                 Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitY()) *
-                                 Eigen::AngleAxisf(dist(generator) * static_cast<float>(M_PI), Eigen::Vector3f::UnitZ()));
-
-    Eigen::Vector4f centroid;
-    pcl::compute3DCentroid(*model_downsampled, centroid);
-    Eigen::Translation3f trans(-centroid.head<3>());
-    Eigen::Translation3f trans_inv(centroid.head<3>());
-    Eigen::Translation3f const_trans(Eigen::Vector3f::Constant(-2.0f));
-
-    Eigen::Affine3f randT(const_trans * trans_inv * rotation * trans);
-
-    pcl::transformPointCloudWithNormals(*model_downsampled, *model_downsampled, randT.matrix());
-
-    // ========================================================================
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
-    const float stddev = 0.01f;
+    const float stddev = 0.0f;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
 
@@ -184,9 +162,9 @@ int main(int argc, char *argv[]) {
     pcl::StopWatch timer;
     std::vector<ppfmap::Pose> poses;
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
-    ppf_matching.setDiscretizationParameters(0.001f, 6.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.1f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(0.75f);
+    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setMaxRadiusPercent(1.0f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
