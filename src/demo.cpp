@@ -15,6 +15,7 @@
 
 
 #include <PPFMap/PPFMatch.h>
+#include <PPFMap/StdMap.h>
 
 
 int main(int argc, char *argv[]) {
@@ -158,6 +159,10 @@ int main(int argc, char *argv[]) {
             reference_point_indices->push_back(i); 
         }
     }
+
+
+    ppfmap::StdMap test;
+    test.trainModel(model_downsampled);
 
     pcl::StopWatch timer;
     std::vector<ppfmap::Pose> poses;

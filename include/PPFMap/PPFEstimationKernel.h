@@ -26,7 +26,6 @@ namespace ppfmap {
         const int point_index;
         const float discretization_distance;
         const float discretization_angle;
-
         const float3* point_array;
         const float3* normal_array;
         float* alpha_m_array;
@@ -69,7 +68,6 @@ namespace ppfmap {
 
         __device__
         void operator()(const int i) const {
-
             const float3& point = point_array[i];
             const float3& point_normal = normal_array[i];
 
@@ -87,14 +85,12 @@ namespace ppfmap {
                         point.y * affine[9] + 
                         point.z * affine[10] + affine[11];
 
-            float alpha = atan2f(-d_z, d_y);
-
             // Store the angle alpha separately and reference in
-            alpha_m_array[i] = alpha;
+            alpha_m_array[i] = atan2f(-d_z, d_y);
 
             uint64_t code = (static_cast<uint64_t>(hk) << 32) | 
-                            (static_cast<uint64_t>(point_index) << 16) | 
-                            (static_cast<uint64_t>(i));
+                            (static_cast<uint64_t>(point_index & 0xFFFF) << 16) | 
+                            (static_cast<uint64_t>(i & 0xFFFF));
 
             // Save the code
             ppf_codes[point_index * number_of_points + i] = code;

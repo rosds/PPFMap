@@ -70,13 +70,13 @@ struct VotesExtraction {
 
                 // Normalize the joint angle.
                 float alpha = alpha_m[alpha_ref] - alpha_s[i];
+
+                // With this, alpha should be in [-pi, pi].
                 alpha = alpha - static_cast<float>(M_2_PI) * 
                         floor((alpha + static_cast<float>(M_PI)) / static_cast<float>(M_2_PI));
 
-                // Now alpha should be in [-pi, pi].
                 // We proceed by discretizing this angle for the final vote.
-                alpha += static_cast<float>(M_PI);
-                uint16_t alpha_disc = static_cast<uint16_t>(alpha / discretization_angle);
+                uint16_t alpha_disc = static_cast<uint16_t>((alpha + static_cast<float>(M_PI)) / discretization_angle);
 
                 uint32_t vote = static_cast<uint32_t>(model_index) << 16 |
                                 static_cast<uint32_t>(alpha_disc);
@@ -320,10 +320,8 @@ void ppfmap::Map::searchBestMatch(const thrust::host_vector<uint32_t> hash_list,
 
     const uint32_t winner = unique_votes[position];
 
+    // Set the result of the voting
     m_idx = static_cast<int>(winner >> 16);
-
-    float alpha_disc = static_cast<float>(winner & 0xFFFF) * discretization_angle;
-    alpha = alpha_disc - static_cast<float>(M_PI);
-
+    alpha = static_cast<float>(winner & 0xFFFF) * discretization_angle - static_cast<float>(M_PI);
     max_votes = static_cast<int>(*iter);
 }
