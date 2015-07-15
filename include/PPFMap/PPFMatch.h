@@ -8,7 +8,7 @@
 #include <thrust/host_vector.h>
 
 #include <PPFMap/utils.h>
-#include <PPFMap/Map.h>
+#include <PPFMap/cuda_map.h>
 #include <PPFMap/ppf_cuda_calls.h>
 
 

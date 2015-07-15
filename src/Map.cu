@@ -1,4 +1,4 @@
-#include <PPFMap/Map.h>
+#include <PPFMap/cuda_map.h>
 #include <PPFMap/PPFEstimationKernel.h>
 
 

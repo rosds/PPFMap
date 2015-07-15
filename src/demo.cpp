@@ -13,9 +13,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-
 #include <PPFMap/PPFMatch.h>
-#include <PPFMap/StdMap.h>
 
 
 int main(int argc, char *argv[]) {
@@ -159,10 +157,6 @@ int main(int argc, char *argv[]) {
             reference_point_indices->push_back(i); 
         }
     }
-
-
-    ppfmap::StdMap test;
-    test.trainModel(model_downsampled);
 
     pcl::StopWatch timer;
     std::vector<ppfmap::Pose> poses;

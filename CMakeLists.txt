@@ -36,11 +36,10 @@ endif()
 set (DEMO_FILES src/demo.cpp) 
 
 set (CPP_FILES 
-    src/Map.cpp
     src/ppf.cpp)
 
 set (HPP_FILES 
-    include/PPFMap/Map.h
+    include/PPFMap/cuda_map.h
     include/PPFMap/ppf.h
     include/PPFMap/PPFMatch.h)
 
