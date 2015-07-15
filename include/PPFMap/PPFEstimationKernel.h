@@ -28,8 +28,8 @@ namespace ppfmap {
         const float discretization_angle;
         const float3* point_array;
         const float3* normal_array;
-        float* alpha_m_array;
         uint64_t* ppf_codes;
+        const int angle_bins;
 
         /** \brief Constructor.
          *  \param[in] position Reference point position.
@@ -49,7 +49,6 @@ namespace ppfmap {
                             const int n_points,
                             const thrust::device_vector<float3>& points,
                             const thrust::device_vector<float3>& normals,
-                            thrust::device_vector<float>& alpha_m,
                             thrust::device_vector<uint64_t>& codes)
             : ref_point(position)
             , ref_normal(normal)
@@ -59,8 +58,8 @@ namespace ppfmap {
             , number_of_points(n_points)
             , point_array(thrust::raw_pointer_cast(points.data()))
             , normal_array(thrust::raw_pointer_cast(normals.data())) 
-            , alpha_m_array(thrust::raw_pointer_cast(alpha_m.data()))
-            , ppf_codes(thrust::raw_pointer_cast(codes.data())) {
+            , ppf_codes(thrust::raw_pointer_cast(codes.data()))
+            , angle_bins(static_cast<int>(ceil(TWO_PI_32F / disc_angle))) {
             
             // Set the transformation to the constant memory of the gpu.
             cudaMemcpyToSymbol(affine, transformation, 12 * sizeof(float));
@@ -86,11 +85,13 @@ namespace ppfmap {
                         point.z * affine[10] + affine[11];
 
             // Store the angle alpha separately and reference in
-            alpha_m_array[i] = atan2f(-d_z, d_y);
+            const float alpha = atan2f(-d_z, d_y);
+
+            uint16_t alpha_disc = static_cast<uint16_t>(angle_bins * (alpha + PI_32F) / TWO_PI_32F);
 
             uint64_t code = (static_cast<uint64_t>(hk) << 32) | 
                             (static_cast<uint64_t>(point_index & 0xFFFF) << 16) | 
-                            (static_cast<uint64_t>(i & 0xFFFF));
+                            (static_cast<uint64_t>(alpha_disc));
 
             // Save the code
             ppf_codes[point_index * number_of_points + i] = code;

@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
     std::vector<ppfmap::Pose> poses;
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
     ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setMaxRadiusPercent(1.0f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
@@ -174,8 +174,8 @@ int main(int argc, char *argv[]) {
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
 
     timer.reset();
-    //ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
-    ppf_matching.detect(scene_downsampled, scene_downsampled, poses);
+    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
+    //ppf_matching.detect(scene_downsampled, scene_downsampled, poses);
     std::cout << "Object detection: " << timer.getTimeSeconds() << "s" <<  std::endl;
 
 
@@ -193,34 +193,34 @@ int main(int argc, char *argv[]) {
     viewer->addPointCloud<pcl::PointNormal>(model_downsampled, "model_downsampled");
     viewer->addPointCloud<pcl::PointNormal>(scene_downsampled, "scene_downsampled");
 
-/*
- *    for (const auto& c : *corr) {
- *        auto& scene_point = scene_downsampled->at(c.index_query);
- *        auto& model_point = model_downsampled->at(c.index_match);
- *
- *        sprintf(name, "line_%d_%d", c.index_query, c.index_match);    
- *        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
- *    }
- */
+    for (const auto& c : *corr) {
+        auto& scene_point = scene_downsampled->at(c.index_query);
+        auto& model_point = model_downsampled->at(c.index_match);
 
-    for (const auto& pose : poses) {
+        sprintf(name, "line_%d_%d", c.index_query, c.index_match);    
+        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, name);
+    }
+
+    //for (const auto& pose : poses) {
     
         viewer->removeShape("reference_line");
         viewer->removePointCloud("model_transformed");
         pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed(new pcl::PointCloud<pcl::PointNormal>());
-        pcl::transformPointCloud(*model_downsampled, *model_transformed, pose.t);
+        pcl::transformPointCloud(*model_downsampled, *model_transformed, T);
         pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
         viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");
 
-        auto& scene_point = scene_downsampled->at(pose.c.index_query);
-        auto& model_point = model_downsampled->at(pose.c.index_match);
-        viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, "reference_line");
+        /*
+         *auto& scene_point = scene_downsampled->at(pose.c.index_query);
+         *auto& model_point = model_downsampled->at(pose.c.index_match);
+         *viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, "reference_line");
+         */
 
         while (!viewer->wasStopped()) {
             viewer->spinOnce();
         }
         viewer->resetStoppedFlag();
-    }
+    //}
 
     return 0;
 }

@@ -6,6 +6,10 @@
 
 #include <PPFMap/murmur.h>
 
+#define PI_32F static_cast<float>(M_PI)
+#define TWO_PI_32F static_cast<float>(2.0 * M_PI)
+#define FOUR_PI_32F static_cast<float>(4.0 * M_PI)
+
 namespace ppfmap {
 
     template <typename PointT>
