@@ -12,8 +12,9 @@
  */
 template <typename PointT, typename NormalT>
 void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
-    const PointCloudPtr model, const NormalsPtr normals)  {
+    const PointCloudPtr& model, const NormalsPtr& normals)  {
 
+    // Keep a reference to the point clouds
     model_ = model;
     normals_ = normals;
 
@@ -22,15 +23,15 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
     float3 points_array[number_of_points];
     float3 normals_array[number_of_points];
 
+    // Copy the cloud information into float3 arrays
     for (int i = 0; i < number_of_points; i++) {
         points_array[i] = pointToFloat3(model_->at(i));
         normals_array[i] = normalToFloat3(normals_->at(i));
     }
 
-    model_ppf_map = cuda::setPPFMap(points_array, normals_array, 
-                                    number_of_points,
-                                    discretization_distance,
-                                    discretization_angle);
+    map = cuda::setPPFMap(points_array, normals_array, 
+                          number_of_points, 
+                          distance_step, angle_step);
 
     model_map_initialized = true;
 }
@@ -55,7 +56,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
 
     float affine_s[12];
     std::vector<Pose> pose_vector;
-    const float radius = model_ppf_map->getCloudDiameter() * neighborhood_percentage;
+    const float radius = map->getCloudDiameter() * neighborhood_percentage;
 
     std::vector<int> indices;
     std::vector<float> distances;
@@ -100,7 +101,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
 
     float affine_s[12];
     std::vector<Pose> pose_vector;
-    const float radius = model_ppf_map->getCloudDiameter() * neighborhood_percentage;
+    const float radius = map->getCloudDiameter() * neighborhood_percentage;
 
     std::vector<int> indices;
     std::vector<float> distances;
@@ -176,8 +177,8 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
         // Compute the PPF between reference_point and the i-th neighbor
         hash_list[i] = computePPFFeatureHash(ref_point, ref_normal,
                                              point, normal,
-                                             discretization_distance,
-                                             discretization_angle);
+                                             distance_step,
+                                             angle_step);
 
         // Compute the alpha_s angle
         const Eigen::Vector3f transformed(Tsg_map * point.getVector4fMap());
@@ -189,7 +190,7 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
     float alpha;
     int votes;
 
-    model_ppf_map->searchBestMatch(hash_list, alpha_s_list, index, alpha, votes);
+    map->searchBestMatch(hash_list, alpha_s_list, index, alpha, votes);
 
     const auto& model_point = model_->at(index);
     const auto& model_normal = normals_->at(index);
