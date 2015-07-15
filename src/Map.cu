@@ -72,8 +72,8 @@ struct VotesExtraction {
                 float alpha = alpha_m[alpha_ref] - alpha_s[i];
 
                 // With this, alpha should be in [-pi, pi].
-                alpha = alpha - static_cast<float>(M_2_PI) * 
-                        floor((alpha + static_cast<float>(M_PI)) / static_cast<float>(M_2_PI));
+                alpha = alpha - 2.0f * static_cast<float>(M_PI) * 
+                        floor((alpha + static_cast<float>(M_PI)) / (2.0f * static_cast<float>(M_PI)));
 
                 // We proceed by discretizing this angle for the final vote.
                 uint16_t alpha_disc = static_cast<uint16_t>((alpha + static_cast<float>(M_PI)) / discretization_angle);
