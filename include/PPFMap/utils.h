@@ -31,6 +31,20 @@ namespace ppfmap {
     }
 
     __device__ __host__
+    inline float3 normalize(const float3& v) {
+        float v_norm = ppfmap::norm(v);
+        float3 v_unit;
+        if (v_norm != 0.0f) {
+            v_unit.x = v.x / v_norm;
+            v_unit.y = v.y / v_norm;
+            v_unit.z = v.z / v_norm;
+        } else {
+            v_unit = make_float3(0.0f, 0.0f, 0.0f);
+        }
+        return v_unit;
+    }
+
+    __device__ __host__
     inline float3 cross(const float3& a, const float3& b) {
         float3 c;
         c.x = a.y * b.z - a.z * b.y;
@@ -47,8 +61,11 @@ namespace ppfmap {
      */
     __device__ __host__
     inline float angleBetween(const float3& a, const float3& b) {
-        float3 c = ppfmap::cross(a, b);
-        return atan2f(ppfmap::norm(c), ppfmap::dot(a, b));
+        // Normalize input vectors
+        const float3 a_unit = ppfmap::normalize(a);
+        const float3 b_unit = ppfmap::normalize(b);
+        const float3 c = ppfmap::cross(a_unit, b_unit);
+        return atan2f(ppfmap::norm(c), ppfmap::dot(a_unit, b_unit));
     }
 
     template <typename PointT, typename NormalT>
@@ -57,39 +74,28 @@ namespace ppfmap {
                                           const PointT& p, const NormalT& p_n,
                                           const float disc_dist,
                                           const float disc_angle) {
-        return computePPFFeatureHash<float3, float3>(pointToFloat3(r), normalToFloat3(r_n),
-                                                     pointToFloat3(p), normalToFloat3(p_n),
-                                                     disc_dist, disc_angle);
+        return computePPFFeatureHash<float3, float3>(
+                pointToFloat3(r), normalToFloat3(r_n),
+                pointToFloat3(p), normalToFloat3(p_n),
+                disc_dist, disc_angle);
     }
 
 
     template <>
     __device__ __host__
     inline uint32_t computePPFFeatureHash<float3, float3> (
-        const float3& r, const float3& r_n,
-        const float3& p, const float3& p_n,
+        const float3& p1, const float3& n1,
+        const float3& p2, const float3& n2,
         const float disc_dist, const float disc_angle) {
 
-        float f1, f2, f3, f4;
-        float3 d = make_float3(p.x - r.x,
-                               p.y - r.y,
-                               p.z - r.z);
+        // Compute the vector between the points
+        float3 d = make_float3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
 
-        const float norm = ppfmap::norm(d);
-
-        if (norm != 0.0f) {
-            d.x /= norm;
-            d.y /= norm;
-            d.z /= norm;
-        } else {
-            d = make_float3(0.0f, 0.0f, 0.0f);
-        }
-
-        // These 4 components should always be positive
-        f1 = norm;
-        f2 = ppfmap::angleBetween(d, r_n);
-        f3 = ppfmap::angleBetween(d, p_n);
-        f4 = ppfmap::angleBetween(p_n, r_n);
+        // Compute the 4 components of the ppf feature
+        const float f1 = ppfmap::norm(d);
+        const float f2 = ppfmap::angleBetween(d, n1);
+        const float f3 = ppfmap::angleBetween(d, n2);
+        const float f4 = ppfmap::angleBetween(n1, n2);
 
         uint32_t feature[4];
         feature[0] = static_cast<uint32_t>(f1 / disc_dist);
@@ -111,8 +117,8 @@ namespace ppfmap {
      */
     template <typename PointT, typename NormalT>
     __host__
-    inline void getAlignmentToX(const PointT point,
-                                const NormalT normal,
+    inline void getAlignmentToX(const PointT& point,
+                                const NormalT& normal,
                                 float (*affine)[12]) {
         getAlignmentToX<float3, float3>(pointToFloat3(point), normalToFloat3(normal), affine);
     }
@@ -121,7 +127,7 @@ namespace ppfmap {
     template<>
     __host__ __device__
     inline void getAlignmentToX<float3, float3> (
-        const float3 point, const float3 normal, float (*affine)[12]) {
+        const float3& point, const float3& normal, float (*affine)[12]) {
     
         // Rotation axis lays on the plane y-z (i.e. u = 0)
         float v;
@@ -139,7 +145,7 @@ namespace ppfmap {
         }
 
         // Calculate the angle between the normal and the X axis.
-        float rotation_angle = angleBetween(normal, make_float3(1.0f, 0.0f,0.0f));
+        float angle = angleBetween(normal, make_float3(1.0f, 0.0f,0.0f));
 
         // Normalize vector
         float norm = sqrt(v * v + w * w);
@@ -147,19 +153,19 @@ namespace ppfmap {
         w /= norm;
 
         // First row of rotation matrix
-        (*affine)[0] = (v * v + w * w) * cosf(rotation_angle); 
-        (*affine)[1] = - w * sinf(rotation_angle); 
-        (*affine)[2] = v * sinf(rotation_angle); 
+        (*affine)[0] = cosf(angle); 
+        (*affine)[1] = - w * sinf(angle); 
+        (*affine)[2] = v * sinf(angle); 
 
         // Second row of rotation matrix
-        (*affine)[4] = w * sinf(rotation_angle);
-        (*affine)[5] = v * v + w * w * cosf(rotation_angle); 
-        (*affine)[6] = v * w * (1.0f - cosf(rotation_angle)); 
+        (*affine)[4] = w * sinf(angle);
+        (*affine)[5] = v * v + w * w * cosf(angle); 
+        (*affine)[6] = v * w * (1.0f - cosf(angle)); 
 
         // Third row of rotation matrix
-        (*affine)[8] = - v * sinf(rotation_angle);
-        (*affine)[9] = v * w * (1.0f - cosf(rotation_angle)); 
-        (*affine)[10] = w * w + v * v * cosf(rotation_angle); 
+        (*affine)[8] = - v * sinf(angle);
+        (*affine)[9] = v * w * (1.0f - cosf(angle)); 
+        (*affine)[10] = w * w + v * v * cosf(angle); 
 
         // Translation column
         (*affine)[3] = - point.x * (*affine)[0] 
@@ -173,9 +179,15 @@ namespace ppfmap {
         (*affine)[11] = - point.x * (*affine)[8] 
                         - point.y * (*affine)[9] 
                         - point.z * (*affine)[10];
-
     }
 
+    __device__ __host__
+    inline float computeAlpha(const float3& p, const float T[12]) {
+            // Compute the alpha angle
+            float d_y = p.x * T[4] + p.y * T[5] + p.z * T[6] + T[7];
+            float d_z = p.x * T[8] + p.y * T[9] + p.z * T[10] + T[11];
+            return atan2f(-d_z, d_y);
+    }
 
     /** \brief Functor structure used to compute the distance between two 
      * points.
