@@ -1,3 +1,6 @@
+#ifndef PPFMAP_MURMUR_HH__
+#define PPFMAP_MURMUR_HH__
+
 //-----------------------------------------------------------------------------
 // MurmurHash3 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
@@ -64,3 +67,5 @@ inline uint32_t murmurppf(const uint32_t ppf[4]) {
 
     return h1;
 }
+
+#endif // PPFMAP_MURMUR_HH__

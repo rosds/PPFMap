@@ -11,6 +11,7 @@
 
 #include <PPFMap/utils.h>
 #include <PPFMap/Pose.h>
+#include <PPFMap/DiscretizedPPF.h>
 #include <PPFMap/ppf_cuda_calls.h>
 
 
@@ -116,6 +117,15 @@ public:
                 std::vector<Pose>& poses);
 private:
 
+    struct VotePair {
+        int model_i;
+        float alpha_m;
+        
+        VotePair(const int m_i, const float a_m)
+            : model_i(m_i), alpha_m(a_m) {}
+    };
+
+
     /** \brief Perform the voting and accumulation of the PPF features in the 
      * model and returns the model index with the most votes.
      *
@@ -158,14 +168,17 @@ private:
     float translation_threshold;
     float rotation_threshold;
     float neighborhood_percentage;
+    float model_diameter;
 
     PointCloudPtr model_;
     NormalsPtr normals_;
     pcl::IndicesPtr ref_point_indices;
+
+    std::unordered_multimap<DiscretizedPPF, VotePair> map;
 }; // class PPFMatch
 
 } // namespace ppfmap
 
-// #include <PPFMap/impl/CudaPPFMatch.hpp>
+#include <PPFMap/impl/PPFMatch.hpp>
 
 #endif // PPFMAP_PPFMATCH_HH__
