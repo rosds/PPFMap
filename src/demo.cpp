@@ -13,6 +13,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include <PPFMap/PPFMatch.h>
 #include <PPFMap/CudaPPFMatch.h>
 
 
@@ -122,7 +123,7 @@ int main(int argc, char *argv[]) {
 
     pcl::StopWatch timer;
     std::vector<ppfmap::Pose> poses;
-    ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
+    ppfmap::CudaPPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
     ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setMaxRadiusPercent(1.0f);

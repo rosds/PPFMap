@@ -1,4 +1,4 @@
-#include <PPFMap/PPFMatch.h>
+#include <PPFMap/CudaPPFMatch.h>
 
 
 /** \brief Construct the PPF search structures for the model cloud.
@@ -11,7 +11,7 @@
  *  \param[in] normals Cloud with the normals of the object.
  */
 template <typename PointT, typename NormalT>
-void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
+void ppfmap::CudaPPFMatch<PointT, NormalT>::setModelCloud(
     const PointCloudPtr& model, const NormalsPtr& normals)  {
 
     // Keep a reference to the point clouds
@@ -48,7 +48,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
  *  \return True if the object appears in the scene, false otherwise.
  */
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+bool ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr cloud, 
     const NormalsPtr normals, 
     Eigen::Affine3f& trans, 
@@ -94,7 +94,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
  *  \param[in] normals Pointer to the cloud containing the scene normals.
  */
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+bool ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr cloud, 
     const NormalsPtr normals, 
     std::vector<Pose>& poses) {
@@ -150,7 +150,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
  *  \return The pose with the most votes in the Hough space.
  */
 template <typename PointT, typename NormalT>
-ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
+ppfmap::Pose ppfmap::CudaPPFMatch<PointT, NormalT>::getPose(
     const int reference_index,
     const std::vector<int>& indices,
     const PointCloudPtr cloud,
@@ -220,7 +220,7 @@ ppfmap::Pose ppfmap::PPFMatch<PointT, NormalT>::getPose(
  *  \return True if the transformations are similar
  */
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::similarPoses(
+bool ppfmap::CudaPPFMatch<PointT, NormalT>::similarPoses(
     const Eigen::Affine3f& pose1, const Eigen::Affine3f& pose2) {
 
     // Translation difference.
@@ -244,7 +244,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::similarPoses(
  *  \return True if a cluster was found, false otherwise.
  */
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
+bool ppfmap::CudaPPFMatch<PointT, NormalT>::clusterPoses(
     const std::vector<Pose>& poses, 
     Eigen::Affine3f &trans, 
     pcl::Correspondences& corr) {
