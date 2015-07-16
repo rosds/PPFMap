@@ -8,7 +8,7 @@
 #include <thrust/host_vector.h>
 
 #include <PPFMap/utils.h>
-#include <PPFMap/Map.h>
+#include <PPFMap/cuda_map.h>
 #include <PPFMap/ppf_cuda_calls.h>
 
 
@@ -72,8 +72,8 @@ public:
      */
     PPFMatch(const float disc_dist = 0.01f, 
              const float disc_angle = 12.0f / 180.0f * static_cast<float>(M_PI))
-        : discretization_distance(disc_dist)
-        , discretization_angle(disc_angle)
+        : distance_step(disc_dist)
+        , angle_step(disc_angle)
         , translation_threshold(0.7f)
         , rotation_threshold(30.0f / 180.0f * static_cast<float>(M_PI))
         , neighborhood_percentage(0.5f)
@@ -99,8 +99,8 @@ public:
      */
     void setDiscretizationParameters(const float dist_disc,
                                      const float angle_disc) {
-        discretization_distance = dist_disc;
-        discretization_angle = angle_disc;
+        distance_step = dist_disc;
+        angle_step = angle_disc;
     }
 
     /** \brief Sets the translation and rotation thresholds for the pose 
@@ -123,7 +123,7 @@ public:
      *  \param[in] model Point cloud containing the model object.
      *  \param[in] normals Cloud with the normals of the object.
      */
-    void setModelCloud(const PointCloudPtr model, const NormalsPtr normals);
+    void setModelCloud(const PointCloudPtr& model, const NormalsPtr& normals);
 
     /** \brief Specify a vector of indices of points in the cloud to use as 
      * reference points for the detection task.
@@ -196,15 +196,15 @@ private:
 
     bool model_map_initialized;
     bool use_indices;
-    float discretization_distance;
-    float discretization_angle;
+    float distance_step;
+    float angle_step;
     float translation_threshold;
     float rotation_threshold;
     float neighborhood_percentage;
 
     PointCloudPtr model_;
     NormalsPtr normals_;
-    ppfmap::Map::Ptr model_ppf_map;
+    ppfmap::Map::Ptr map;
     pcl::IndicesPtr ref_point_indices;
 };
 

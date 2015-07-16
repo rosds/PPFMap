@@ -5,7 +5,7 @@ project (PPFMap)
 set (BUILD_TYPE Release)
 
 find_package (CUDA REQUIRED)
-set(CUDA_NVCC_FLAGS " -arch=sm_10 ")
+set(CUDA_NVCC_FLAGS "-arch=sm_30")
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Point Cloud Library (PCL)
@@ -36,10 +36,11 @@ endif()
 set (DEMO_FILES src/demo.cpp) 
 
 set (CPP_FILES 
-    src/Map.cpp)
+    src/ppf.cpp)
 
 set (HPP_FILES 
-    include/PPFMap/Map.h
+    include/PPFMap/cuda_map.h
+    include/PPFMap/ppf.h
     include/PPFMap/PPFMatch.h)
 
 set (CU_FILES
@@ -77,3 +78,9 @@ if(DOXYGEN_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen" VERBATIM)
 endif(DOXYGEN_FOUND)
+
+##############################################################################
+#   Include tests                                                            #
+##############################################################################
+enable_testing()
+add_subdirectory(tests)

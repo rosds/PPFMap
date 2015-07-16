@@ -1,7 +1,7 @@
 #ifndef PPFMAP_PPF_CUDA_CALLS_HH__
 #define PPFMAP_PPF_CUDA_CALLS_HH__
 
-#include <PPFMap/Map.h>
+#include <PPFMap/cuda_map.h>
 
 namespace ppfmap {
 

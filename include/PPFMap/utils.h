@@ -6,6 +6,10 @@
 
 #include <PPFMap/murmur.h>
 
+#define PI_32F static_cast<float>(M_PI)
+#define TWO_PI_32F static_cast<float>(2.0 * M_PI)
+#define FOUR_PI_32F static_cast<float>(4.0 * M_PI)
+
 namespace ppfmap {
 
     template <typename PointT>
@@ -20,11 +24,20 @@ namespace ppfmap {
         return make_float3(p.normal_x, p.normal_y, p.normal_z); 
     }
 
+    /** \brief Vector dot product.
+     *  \param[in] a 3D vector.
+     *  \param[in] b 3D vector.
+     *  \return Inner product from the two vectors.
+     */
     __device__ __host__
     inline float dot(const float3& a, const float3& b) {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
+    /** \brief Computes the norm of a 3D vector.
+     *  \param[in] v 3D vector.
+     *  \return The norm of the vector.
+     */
     __device__ __host__
     inline float norm(const float3& v) {
         return sqrtf(ppfmap::dot(v, v));
@@ -68,6 +81,42 @@ namespace ppfmap {
         return atan2f(ppfmap::norm(c), ppfmap::dot(a_unit, b_unit));
     }
 
+    /** \brief Compute the Point Pair Feature between two points.
+     *  \param[in] p1 First 3D point.
+     *  \param[in] n1 The normal of the first point.
+     *  \param[in] p2 Second 3D point.
+     *  \param[in] n2 The normal of the second point.
+     *  \param[out] f1 The first component of the PPF feature vector.
+     *  \param[out] f2 The second component of the PPF feature vector.
+     *  \param[out] f3 The third component of the PPF feature vector.
+     *  \param[out] f4 The fourth component of the PPF feature vector.
+     */
+    __device__ __host__
+    inline void computePPFFeature(const float3& p1, const float3& n1,
+                                  const float3& p2, const float3& n2,
+                                  float& f1, float& f2, float& f3, float& f4) {
+    
+        float3 d = make_float3(p2.x - p1.x,
+                               p2.y - p1.y,
+                               p2.z - p1.z);
+
+        const float norm = ppfmap::norm(d);
+
+        if (norm != 0.0f) {
+            d.x /= norm;
+            d.y /= norm;
+            d.z /= norm;
+        } else {
+            d = make_float3(0.0f, 0.0f, 0.0f);
+        }
+
+        // These 4 components should always be positive
+        f1 = norm;
+        f2 = ppfmap::angleBetween(d, n1);
+        f3 = ppfmap::angleBetween(d, n2);
+        f4 = ppfmap::angleBetween(n1, n2);
+    }
+
     template <typename PointT, typename NormalT>
     __device__ __host__
     inline uint32_t computePPFFeatureHash(const PointT& r, const NormalT& r_n,
@@ -97,6 +146,7 @@ namespace ppfmap {
         const float f3 = ppfmap::angleBetween(d, n2);
         const float f4 = ppfmap::angleBetween(n1, n2);
 
+        // Discretize the PPF Feature before hashing
         uint32_t feature[4];
         feature[0] = static_cast<uint32_t>(f1 / disc_dist);
         feature[1] = static_cast<uint32_t>(f2 / disc_angle);
@@ -226,4 +276,3 @@ namespace ppfmap {
 } // namespace ppfmap
 
 #endif // PPFMAP_UTILS_HH__
-

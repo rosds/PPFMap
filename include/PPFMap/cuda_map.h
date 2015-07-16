@@ -72,6 +72,11 @@ public:
      */
     float getCloudDiameter() { return cloud_diameter; }
 
+    /** \brief Returns the number of features stored in the map.
+     *  \return The number of feature stored in the map.
+     */
+    std::size_t size() { return ppf_codes.size(); }
+
 private:
     
     const float discretization_distance;
@@ -84,7 +89,6 @@ private:
     thrust::device_vector<uint32_t> hash_keys;
     thrust::device_vector<uint32_t> ppf_index;
     thrust::device_vector<uint32_t> ppf_count;
-
 }; // class Map
 
 } // namespace ppfmap
