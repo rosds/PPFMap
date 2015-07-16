@@ -210,6 +210,6 @@ private:
 
 } // namespace ppfmap
 
-#include <PPFMap/impl/PPFMatch.hpp>
+#include <PPFMap/impl/CudaPPFMatch.hpp>
 
 #endif // PPFMAP_PPFMATCH_HH__

@@ -13,7 +13,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include <PPFMap/PPFMatch.h>
+#include <PPFMap/CudaPPFMatch.h>
 
 
 int main(int argc, char *argv[]) {
@@ -22,13 +22,10 @@ int main(int argc, char *argv[]) {
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr model(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::PointCloud<pcl::PointXYZ>::Ptr scene(new pcl::PointCloud<pcl::PointXYZ>());
-    
     pcl::PointCloud<pcl::Normal>::Ptr model_normals(new pcl::PointCloud<pcl::Normal>());
     pcl::PointCloud<pcl::Normal>::Ptr scene_normals(new pcl::PointCloud<pcl::Normal>());
-
     pcl::PointCloud<pcl::PointNormal>::Ptr model_with_normals(new pcl::PointCloud<pcl::PointNormal>());
     pcl::PointCloud<pcl::PointNormal>::Ptr scene_with_normals(new pcl::PointCloud<pcl::PointNormal>());
-
     pcl::PointCloud<pcl::PointNormal>::Ptr scene_downsampled(new pcl::PointCloud<pcl::PointNormal>());
     pcl::PointCloud<pcl::PointNormal>::Ptr model_downsampled(new pcl::PointCloud<pcl::PointNormal>());
 
@@ -39,58 +36,23 @@ int main(int argc, char *argv[]) {
     //pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
     //pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
-/*
- *    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
- *
- *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
- *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
- *    ne.setInputCloud(model);
- *    ne.setSearchMethod(tree);
- *    ne.setRadiusSearch(0.03f);
- *    ne.compute(*model_normals);
- *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
- *
- *    pcl::VoxelGrid<pcl::PointNormal> sor;
- *    sor.setInputCloud(model_with_normals);
- *    sor.setLeafSize(0.05f, 0.05f, 0.05f);
- *    sor.filter(*model_downsampled);
- */
+    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
 
-    pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+    ne.setInputCloud(model);
+    ne.setSearchMethod(tree);
+    ne.setRadiusSearch(0.03f);
+    ne.compute(*model_normals);
+    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+
+    pcl::VoxelGrid<pcl::PointNormal> sor;
+    sor.setInputCloud(model_with_normals);
+    sor.setLeafSize(0.05f, 0.05f, 0.05f);
+    sor.filter(*model_downsampled);
+
+    //pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
     pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
-
-/*
- *    // ========================================================================
- *    //  Compute normals
- *    // ========================================================================
- *    
- *    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
- *    pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
- *    ne.setInputCloud(model);
- *    ne.setSearchMethod(tree);
- *    ne.setRadiusSearch(0.03f);
- *    ne.compute(*model_normals);
- *    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
- *
- *    ne.setInputCloud(scene);
- *    ne.setSearchMethod(tree);
- *    ne.setRadiusSearch(0.03f);
- *    ne.compute(*scene_normals);
- *    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
- *
- *    // ========================================================================
- *    //  Downsample the clouds
- *    // ========================================================================
- *    
- *    pcl::VoxelGrid<pcl::PointNormal> sor;
- *    sor.setInputCloud(model_with_normals);
- *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
- *    sor.filter(*model_downsampled);
- *
- *    sor.setInputCloud(scene_with_normals);
- *    sor.setLeafSize(0.01f, 0.01f, 0.01f);
- *    sor.filter(*scene_downsampled);
- */
 
     // ========================================================================
     //  Add gaussian noise to the model cloud
@@ -151,9 +113,9 @@ int main(int argc, char *argv[]) {
     // ========================================================================
     
     pcl::IndicesPtr reference_point_indices(new std::vector<int>());
-    for (int i = 0; i < scene_downsampled->size(); i += 10) {
+    for (int i = 0; i < scene_downsampled->size(); i++) {
         const auto& point = scene_downsampled->at(i);
-        if (pcl::isFinite(point)) {
+        if (pcl::isFinite(point) && point.curvature > 0.01f) {
             reference_point_indices->push_back(i); 
         }
     }
