@@ -128,16 +128,16 @@ int main(int argc, char *argv[]) {
     Eigen::Affine3f T;
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
 
+    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setMaxRadiusPercent(1.0f);
+    ppf_matching.setReferencePointIndices(reference_point_indices);
+
+    timer.reset();
+    ppf_matching.setModelCloud(model_downsampled, model_downsampled);
+    std::cout << "PPF Map creation: " << timer.getTimeSeconds() << "s" <<  std::endl;
+
 /*
- *    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
- *    ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
- *    ppf_matching.setMaxRadiusPercent(1.0f);
- *    ppf_matching.setReferencePointIndices(reference_point_indices);
- *
- *    timer.reset();
- *    ppf_matching.setModelCloud(model_downsampled, model_downsampled);
- *    std::cout << "PPF Map creation: " << timer.getTimeSeconds() << "s" <<  std::endl;
- *
  *    Eigen::Affine3f T;
  *    pcl::CorrespondencesPtr corr(new pcl::Correspondences());
  *

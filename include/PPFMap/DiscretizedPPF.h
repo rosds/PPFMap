@@ -29,6 +29,22 @@ namespace ppfmap {
         return atan2f(c.norm(), a.dot(b));
     }
 
+    template <typename PointT, typename NormalT>
+    inline Eigen::Affine3f getTg(const PointT& p, const NormalT& n) {
+        const auto point = p.getVector3fMap();
+        const auto normal = n.getNormalVector3fMap();
+
+        auto axis = normal.cross(Eigen::Vector3f::UnitX());
+
+        if (axis(0) == 0.0f && axis(1) == 0.0f && axis(2) == 0.0f) {
+            axis = Eigen::Vector3f::UnitX();
+        } else {
+            axis.normalize();
+        }
+
+        Eigen::AngleAxisf rot(angleBetween(normal, Eigen::Vector3f::UnitX()), axis);
+        return Eigen::Affine3f(rot * Eigen::Translation3f(-point));
+    }
 
     template <typename PointT, typename NormalT>
     DiscretizedPPF computePPFDiscretized(const PointT& p1, const NormalT& pn1, 

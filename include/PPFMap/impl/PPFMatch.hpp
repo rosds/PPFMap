@@ -19,8 +19,7 @@ ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(const PointCloudPtr& model,
             continue;
         }
 
-        ppfmap::getAlignmentToX(p1, n1, affine);
-        Eigen::Map<Eigen::Matrix<float, 3, 4, Eigen::RowMajor> > Tmg(affine);
+        const auto Tmg = getTg(p1, n1);
 
         for (int j = 0; j < model_->size(); j++) {
             
