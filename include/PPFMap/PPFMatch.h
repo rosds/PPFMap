@@ -125,24 +125,6 @@ private:
             : model_i(m_i), alpha_m(a_m) {}
     };
 
-
-    /** \brief Perform the voting and accumulation of the PPF features in the 
-     * model and returns the model index with the most votes.
-     *
-     *  \param[in] reference_index Index of the reference point.
-     *  \param[in] indices Vector of indices of the reference point neighbors.
-     *  \param[in] cloud Shared pointer to the cloud.
-     *  \param[in] cloud_normals Shared pointer to the cloud normals.
-     *  \param[in] affine_s Affine matrix with the rotation and translation for 
-     *  the alignment of the reference point/normal with the X axis.
-     *  \return The pose with the most votes in the Hough space.
-     */
-    Pose getPose(const int reference_index,
-                 const std::vector<int>& indices,
-                 const PointCloudPtr cloud,
-                 const NormalsPtr cloud_normals,
-                 const float affine_s[12]);
-
     /** \brief True if poses are similar given the translation and rotation 
      * thresholds.
      *  \param[in] t1 First pose.
@@ -159,7 +141,7 @@ private:
      *  \param[out] corr Vector of correspondences supporting the cluster.
      *  \return True if a cluster was found, false otherwise.
      */
-    bool clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
+    void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
     bool use_indices;
