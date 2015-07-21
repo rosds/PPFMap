@@ -84,7 +84,7 @@ ppfmap::PPFMatch<PointT, NormalT>::detect(const PointCloudPtr scene,
         // Loop through nearest neighbors
         std::vector<int> neighbor_indices;
         std::vector<float> distances;
-        scene_search.radiusSearch(p1, 0.5f * model_diameter, neighbor_indices, distances);
+        scene_search.radiusSearch(p1, neighborhood_percentage * model_diameter, neighbor_indices, distances);
 
         for (const auto& j : neighbor_indices) {
 
