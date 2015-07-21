@@ -104,7 +104,8 @@ public:
      */
     bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
-                pcl::Correspondences& correspondences);
+                pcl::Correspondences& correspondences, 
+                int& votes);
 
     /** \brief Search the given scene for the object and returns a vector with 
      * the poses sorted by the votes obtained in the Hough space.
@@ -139,9 +140,13 @@ private:
      *  \param[out] trans Average affine transformation for the biggest 
      *  cluster.
      *  \param[out] corr Vector of correspondences supporting the cluster.
+     *  \param[out] votes Supporting number of votes.
      *  \return True if a cluster was found, false otherwise.
      */
-    void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
+    void clusterPoses(const std::vector<Pose>& poses, 
+                      Eigen::Affine3f& trans, 
+                      pcl::Correspondences& corr,
+                      int& votes);
 
     bool model_map_initialized;
     bool use_indices;

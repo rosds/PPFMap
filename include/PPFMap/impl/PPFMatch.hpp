@@ -165,18 +165,20 @@ ppfmap::PPFMatch<PointT, NormalT>::detect(const PointCloudPtr scene,
 template <typename PointT, typename NormalT>
 bool ppfmap::PPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr scene, const NormalsPtr normals, 
-    Eigen::Affine3f& trans, pcl::Correspondences& correspondences) {
+    Eigen::Affine3f& trans, 
+    pcl::Correspondences& correspondences,
+    int& votes) {
+
     std::vector<Pose> poses;
-
     detect(scene, normals, poses);
-
-    clusterPoses(poses, trans, correspondences);
+    clusterPoses(poses, trans, correspondences, votes);
 }
 
 template <typename PointT, typename NormalT>
 void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
     const std::vector<Pose>& poses, 
-    Eigen::Affine3f &trans, pcl::Correspondences& corr) {
+    Eigen::Affine3f &trans, pcl::Correspondences& corr,
+    int& votes) {
 
     int cluster_idx;
     std::vector<std::pair<int, int> > cluster_votes;
@@ -216,15 +218,13 @@ void ppfmap::PPFMatch<PointT, NormalT>::clusterPoses(
         corr.push_back(pose.c);
     }
 
-    //for (const auto& pose : poses) {
-        //corr.push_back(pose.c);
-    //}
-
     translation_average /= static_cast<float> (pose_clusters[cluster_votes.back().second].size());
     rotation_average /= static_cast<float> (pose_clusters[cluster_votes.back().second].size());
 
     trans.translation().matrix() = translation_average;
     trans.linear().matrix() = Eigen::Quaternionf(rotation_average).normalized().toRotationMatrix();
+
+    votes = cluster_votes.back().first;
 }
 
 
