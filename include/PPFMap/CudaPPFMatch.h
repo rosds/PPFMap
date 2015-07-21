@@ -134,11 +134,13 @@ public:
      *  \param[out] trans Affine transformation from to model to the scene.
      *  \param[out] correspondence Supporting correspondences from the scene to 
      *  the model.
+     *  \param[out] Number of votes supporting the final pose.
      *  \return True if the object appears in the scene, false otherwise.
      */
-    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
+    void detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
-                pcl::Correspondences& correspondences);
+                pcl::Correspondences& correspondences,
+                int& votes);
 
     /** \brief Search the given scene for the object and returns a vector with 
      * the poses sorted by the votes obtained in the Hough space.
@@ -147,7 +149,7 @@ public:
      *  object.
      *  \param[in] normals Pointer to the cloud containing the scene normals.
      */
-    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
+    void detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 std::vector<Pose>& poses);
 private:
 
@@ -167,24 +169,6 @@ private:
                  const PointCloudPtr cloud,
                  const NormalsPtr cloud_normals,
                  const float affine_s[12]);
-
-    /** \brief True if poses are similar given the translation and rotation 
-     * thresholds.
-     *  \param[in] t1 First pose.
-     *  \param[in] t2 Second pose.
-     *  \return True if the transformations are similar
-     */
-    bool similarPoses(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
-
-    /** \brief Returns the average pose and the correspondences for the most 
-     * consistent cluster of poses.
-     *  \param[in] poses Vector with the poses.
-     *  \param[out] trans Average affine transformation for the biggest 
-     *  cluster.
-     *  \param[out] corr Vector of correspondences supporting the cluster.
-     *  \return True if a cluster was found, false otherwise.
-     */
-    bool clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
     bool use_indices;

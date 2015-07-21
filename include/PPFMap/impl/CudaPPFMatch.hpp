@@ -45,44 +45,26 @@ void ppfmap::CudaPPFMatch<PointT, NormalT>::setModelCloud(
  *  \param[out] trans Affine transformation from to model to the scene.
  *  \param[out] correspondence Supporting correspondences from the scene to 
  *  the model.
+ *  \param[out] Number of votes supporting the final pose.
  *  \return True if the object appears in the scene, false otherwise.
  */
 template <typename PointT, typename NormalT>
-bool ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
+void ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr cloud, 
     const NormalsPtr normals, 
     Eigen::Affine3f& trans, 
-    pcl::Correspondences& correspondences) {
+    pcl::Correspondences& correspondences,
+    int& votes) {
 
-    float affine_s[12];
-    std::vector<Pose> pose_vector;
-    const float radius = map->getCloudDiameter() * neighborhood_percentage;
-
-    std::vector<int> indices;
-    std::vector<float> distances;
-
-    pcl::KdTreeFLANN<PointT> kdtree;
-    kdtree.setInputCloud(cloud);
-
-    if (!use_indices) {
-        ref_point_indices->resize(cloud->size());
-        for (int i = 0; i < cloud->size(); i++) {
-            (*ref_point_indices)[i] = i;
-        }
-    }
-
-    for (const auto index : *ref_point_indices) {
-        const auto& point = cloud->at(index);
-        const auto& normal = normals->at(index);
-
-        if (!pcl::isFinite(point)) continue;
-
-        getAlignmentToX(point, normal, &affine_s);
-        kdtree.radiusSearch(point, radius, indices, distances);
-
-        pose_vector.push_back(getPose(index, indices, cloud, normals, affine_s));
-    }
-    return clusterPoses(pose_vector, trans, correspondences);
+    std::vector<Pose> poses;
+    detect(cloud, normals, poses);
+    clusterPoses(
+        poses,
+        translation_threshold,
+        rotation_threshold,
+        trans, 
+        correspondences,
+        votes);
 }
 
 
@@ -94,7 +76,7 @@ bool ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
  *  \param[in] normals Pointer to the cloud containing the scene normals.
  */
 template <typename PointT, typename NormalT>
-bool ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
+void ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr cloud, 
     const NormalsPtr normals, 
     std::vector<Pose>& poses) {
@@ -133,8 +115,6 @@ bool ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
          [](const Pose& a, const Pose& b) -> bool { 
              return a.votes > b.votes; 
          });
-
-    return true;
 }
 
 
@@ -210,96 +190,4 @@ ppfmap::Pose ppfmap::CudaPPFMatch<PointT, NormalT>::getPose(
     final_pose.votes = votes;
 
     return final_pose;
-}
-
-
-/** \brief True if poses are similar given the translation and rotation 
- * thresholds.
- *  \param[in] t1 First pose.
- *  \param[in] t2 Second pose.
- *  \return True if the transformations are similar
- */
-template <typename PointT, typename NormalT>
-bool ppfmap::CudaPPFMatch<PointT, NormalT>::similarPoses(
-    const Eigen::Affine3f& pose1, const Eigen::Affine3f& pose2) {
-
-    // Translation difference.
-    float position_diff = (pose1.translation() - pose2.translation()).norm();
-    
-    // Rotation angle difference.
-    Eigen::AngleAxisf rotation_diff_mat(pose1.rotation().inverse() * pose2.rotation());
-    float rotation_diff = fabsf(rotation_diff_mat.angle());
-
-    return position_diff < translation_threshold &&
-           rotation_diff < rotation_threshold;
-}
-
-
-/** \brief Returns the average pose and the correspondences for the most 
- * consistent cluster of poses.
- *  \param[in] poses Vector with the poses.
- *  \param[out] trans Average affine transformation for the biggest 
- *  cluster.
- *  \param[out] corr Vector of correspondences supporting the cluster.
- *  \return True if a cluster was found, false otherwise.
- */
-template <typename PointT, typename NormalT>
-bool ppfmap::CudaPPFMatch<PointT, NormalT>::clusterPoses(
-    const std::vector<Pose>& poses, 
-    Eigen::Affine3f &trans, 
-    pcl::Correspondences& corr) {
-
-    if (!poses.size()) {
-        return false;
-    }
-
-    int cluster_idx;
-    std::vector<std::pair<int, int> > cluster_votes;
-    std::vector<std::vector<Pose> > pose_clusters;
-
-    for (const auto& pose : poses) {
-
-        bool found_cluster = false;
-
-        cluster_idx = 0;
-        for (auto& cluster : pose_clusters) {
-            if (similarPoses(pose.t, cluster.front().t)) {
-                found_cluster = true;
-                cluster.push_back(pose);
-                cluster_votes[cluster_idx].first += pose.votes;
-            }
-            ++cluster_idx;
-        }
-
-        // Add a new cluster of poses
-        if (found_cluster == false) {
-            std::vector<Pose> new_cluster;
-            new_cluster.push_back(pose);
-            pose_clusters.push_back(new_cluster);
-            cluster_votes.push_back(std::pair<int, int>(pose.votes , pose_clusters.size() - 1));
-        }
-    }
-
-    std::sort(cluster_votes.begin(), cluster_votes.end());
-
-    Eigen::Vector3f translation_average (0.0, 0.0, 0.0);
-    Eigen::Vector4f rotation_average (0.0, 0.0, 0.0, 0.0);
-
-    for (const auto& pose : pose_clusters[cluster_votes.back().second]) {
-        translation_average += pose.t.translation();
-        rotation_average += Eigen::Quaternionf(pose.t.rotation()).coeffs();
-        corr.push_back(pose.c);
-    }
-
-    //for (const auto& pose : poses) {
-        //corr.push_back(pose.c);
-    //}
-
-    translation_average /= static_cast<float> (pose_clusters[cluster_votes.back().second].size());
-    rotation_average /= static_cast<float> (pose_clusters[cluster_votes.back().second].size());
-
-    trans.translation().matrix() = translation_average;
-    trans.linear().matrix() = Eigen::Quaternionf(rotation_average).normalized().toRotationMatrix();
-
-    return true;
 }

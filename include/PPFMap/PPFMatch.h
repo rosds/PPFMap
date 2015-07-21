@@ -126,28 +126,6 @@ private:
             : model_i(m_i), alpha_m(a_m) {}
     };
 
-    /** \brief True if poses are similar given the translation and rotation 
-     * thresholds.
-     *  \param[in] t1 First pose.
-     *  \param[in] t2 Second pose.
-     *  \return True if the transformations are similar
-     */
-    bool similarPoses(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
-
-    /** \brief Returns the average pose and the correspondences for the most 
-     * consistent cluster of poses.
-     *  \param[in] poses Vector with the poses.
-     *  \param[out] trans Average affine transformation for the biggest 
-     *  cluster.
-     *  \param[out] corr Vector of correspondences supporting the cluster.
-     *  \param[out] votes Supporting number of votes.
-     *  \return True if a cluster was found, false otherwise.
-     */
-    void clusterPoses(const std::vector<Pose>& poses, 
-                      Eigen::Affine3f& trans, 
-                      pcl::Correspondences& corr,
-                      int& votes);
-
     bool model_map_initialized;
     bool use_indices;
     float distance_step;
