@@ -76,16 +76,7 @@ namespace ppfmap {
                                                 discretization_distance,
                                                 discretization_angle);
 
-            // Compute the alpha angle
-            float d_y = point.x * affine[4] + 
-                        point.y * affine[5] + 
-                        point.z * affine[6] + affine[7];
-            float d_z = point.x * affine[8] + 
-                        point.y * affine[9] + 
-                        point.z * affine[10] + affine[11];
-
-            // Store the angle alpha separately and reference in
-            const float alpha = atan2f(-d_z, d_y);
+            const float alpha = computeAlpha(point, affine);
 
             uint16_t alpha_disc = static_cast<uint16_t>(angle_bins * (alpha + PI_32F) / TWO_PI_32F);
 

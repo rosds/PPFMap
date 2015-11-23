@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
     // ========================================================================
-    //  Transform the model cloud with a random rotation
+    //  Transform the model cloud with a random rigid transformation.
     // ========================================================================
 
     Eigen::Vector4f centroid;
@@ -113,6 +113,8 @@ int main(int argc, char *argv[]) {
     //  Compute the model's ppfs
     // ========================================================================
     
+    int votes;
+
     pcl::IndicesPtr reference_point_indices(new std::vector<int>());
     for (int i = 0; i < scene_downsampled->size(); i++) {
         const auto& point = scene_downsampled->at(i);
@@ -130,7 +132,7 @@ int main(int argc, char *argv[]) {
 
     ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
     ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setMaxRadiusPercent(1.0f);
+    ppf_matching.setMaxRadiusPercent(0.5f);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
@@ -138,7 +140,7 @@ int main(int argc, char *argv[]) {
     std::cout << "PPF Map creation: " << timer.getTimeSeconds() << "s" <<  std::endl;
 
     timer.reset();
-    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr);
+    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr, votes);
     //ppf_matching.detect(scene_downsampled, scene_downsampled, poses);
     std::cout << "Object detection: " << timer.getTimeSeconds() << "s" <<  std::endl;
 

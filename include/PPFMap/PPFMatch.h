@@ -104,7 +104,8 @@ public:
      */
     bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
-                pcl::Correspondences& correspondences);
+                pcl::Correspondences& correspondences, 
+                int& votes);
 
     /** \brief Search the given scene for the object and returns a vector with 
      * the poses sorted by the votes obtained in the Hough space.
@@ -124,24 +125,6 @@ private:
         VotePair(const int m_i, const float a_m)
             : model_i(m_i), alpha_m(a_m) {}
     };
-
-    /** \brief True if poses are similar given the translation and rotation 
-     * thresholds.
-     *  \param[in] t1 First pose.
-     *  \param[in] t2 Second pose.
-     *  \return True if the transformations are similar
-     */
-    bool similarPoses(const Eigen::Affine3f &t1, const Eigen::Affine3f& t2);
-
-    /** \brief Returns the average pose and the correspondences for the most 
-     * consistent cluster of poses.
-     *  \param[in] poses Vector with the poses.
-     *  \param[out] trans Average affine transformation for the biggest 
-     *  cluster.
-     *  \param[out] corr Vector of correspondences supporting the cluster.
-     *  \return True if a cluster was found, false otherwise.
-     */
-    void clusterPoses(const std::vector<Pose>& poses, Eigen::Affine3f& trans, pcl::Correspondences& corr);
 
     bool model_map_initialized;
     bool use_indices;

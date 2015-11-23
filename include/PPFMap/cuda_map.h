@@ -3,14 +3,15 @@
 
 #include <iostream>
 #include <cuda_runtime.h>
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
 #include <thrust/sort.h>
 #include <thrust/scan.h>
 #include <thrust/binary_search.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/zip_iterator.h>
-
-#include <pcl/cuda/pcl_cuda_base.h>
+#include <boost/shared_ptr.hpp>
 
 #include <PPFMap/utils.h>
 
@@ -46,8 +47,8 @@ public:
      *  \param[in] disc_dist Discretization factor for pair distance.
      *  \param[in] disc_angle Discretization factor for angles.
      */
-    Map(const pcl::cuda::Host<float3>::type& h_points,
-        const pcl::cuda::Host<float3>::type& h_normals,
+    Map(const thrust::host_vector<float3>& h_points,
+        const thrust::host_vector<float3>& h_normals,
         const float disc_dist,
         const float disc_angle);
 
