@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
     // ========================================================================
-    //  Transform the model cloud with a random rotation
+    //  Transform the model cloud with a random rigid transformation.
     // ========================================================================
 
     Eigen::Vector4f centroid;

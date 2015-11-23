@@ -1,8 +1,8 @@
 #ifndef PPFMAP_UTILS_HH__
 #define PPFMAP_UTILS_HH__
 
+#include <thrust/extrema.h>
 #include <cuda_runtime.h>
-#include <pcl/cuda/pcl_cuda_base.h>
 
 #include <PPFMap/murmur.h>
 
@@ -22,6 +22,45 @@ namespace ppfmap {
     __device__ __host__
     float3 normalToFloat3(const NormalT& p) {
         return make_float3(p.normal_x, p.normal_y, p.normal_z); 
+    }
+
+    /** \brief Compute the norm of the vector.
+     *  \param[in] a The vector.
+     *  \return The norm of the vector.
+     */
+    __device__ __host__
+    inline float length(const float3& a) {
+        return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+    }
+
+    /** \brief normalize a vector.
+     *  \param[in] a The vector to normalize.
+     *  \return the vector normalized.
+     */
+    __device__ __host__
+    inline float3 normalize(const float3& a) {
+        const float n = length(a);
+        return make_float3(a.x / n, a.y / n, a.z / n);
+    }
+
+    /** \brief Compute the cross product of two vectors.
+     *  \param[in] a First vector.
+     *  \param[in] b Second vector.
+     *  \return The cross product of the two vectors.
+     */
+    __device__ __host__
+    inline float3 cross(const float3& a, const float3& b) {
+        return make_float3(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x);
+    }
+
+    /** \brief Compute the dot product of the two vectors.
+     *  \param[in] a The first vector.
+     *  \param[in] b The second vector.
+     *  \return The dot product of the two vectors.
+     */
+    __device__ __host__
+    inline float dot(const float3& a, const float3& b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
     /** \brief Returns the angle between two vectors.
@@ -211,7 +250,9 @@ namespace ppfmap {
 
         __host__ __device__ 
         float operator()(const float3 &point) const {
-            return length(point - ref_point);
+            return length(make_float3(point.x - ref_point.x, 
+                                      point.y - ref_point.y, 
+                                      point.z - ref_point.z));
         }
     };
 
@@ -222,11 +263,12 @@ namespace ppfmap {
      *  distance.
      *  \param[in] points PCL cuda storage containing the points as float3.
      */
-    template <template <typename> class Storage>
+    template <typename RandomAccessIterator>
     inline float maxDistanceToPoint(
         const float3 point, 
-        const typename Storage<float3>::type& points) {
-        return thrust::transform_reduce(points.begin(), points.end(),
+        RandomAccessIterator points_start,
+        RandomAccessIterator points_end) {
+        return thrust::transform_reduce(points_start, points_end,
                                         compute_distance(point), 0.0f,
                                         thrust::maximum<float>());
     

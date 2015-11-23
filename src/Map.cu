@@ -10,19 +10,6 @@ struct extract_hash_key : public thrust::unary_function<uint64_t, uint32_t> {
 };
 
 
-struct copy_element_by_index : public thrust::unary_function<uint32_t, uint32_t> {
-    const uint32_t* ppf_index_ptr;
-
-    copy_element_by_index(thrust::device_vector<uint32_t> const& vec) 
-        : ppf_index_ptr(thrust::raw_pointer_cast(vec.data())) {}
-
-    __host__ __device__
-    uint32_t operator()(const uint32_t index) const {
-        return ppf_index_ptr[index];
-    }
-};
-
-
 struct VotesExtraction {
     const float discretization_angle;
 
@@ -148,8 +135,8 @@ struct PPFMapSearch {
  *  \param[in] disc_dist Discretization factor for pair distance.
  *  \param[in] disc_angle Discretization factor for angles.
  */
-ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
-                 const pcl::cuda::Host<float3>::type& h_normals,
+ppfmap::Map::Map(const thrust::host_vector<float3>& h_points,
+                 const thrust::host_vector<float3>& h_normals,
                  const float disc_dist,
                  const float disc_angle)
     : discretization_distance(disc_dist)
@@ -159,8 +146,8 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
     const std::size_t number_of_points = h_points.size();
     const std::size_t number_of_pairs = number_of_points * number_of_points;
 
-    pcl::cuda::Device<float3>::type d_points(h_points);
-    pcl::cuda::Device<float3>::type d_normals(h_normals);
+    thrust::device_vector<float3> d_points(h_points);
+    thrust::device_vector<float3> d_normals(h_normals);
 
     ppf_codes.resize(number_of_pairs);
 
@@ -190,7 +177,7 @@ ppfmap::Map::Map(const pcl::cuda::Host<float3>::type& h_points,
         thrust::for_each(it, it + number_of_points, ppfe);
 
         // Look for the maximum distance between pairs
-        float max_pair_dist = ppfmap::maxDistanceToPoint<pcl::cuda::Device>(point_position, d_points);
+        float max_pair_dist = ppfmap::maxDistanceToPoint(point_position, d_points.begin(), d_points.end());
 
         if (max_distance < max_pair_dist) {
             max_distance = max_pair_dist; 
