@@ -76,7 +76,7 @@ public:
      *  to be detected in the scene cloud. The necessary information to build 
      *  the search structure are the points and normals from the object.
      *
-     *  \param[in] model Point cloud containing the model object.
+     *  \param[in] model Object's point cloud.
      *  \param[in] normals Cloud with the normals of the object.
      */
     void setModelCloud(const PointCloudPtr& model, const NormalsPtr& normals);

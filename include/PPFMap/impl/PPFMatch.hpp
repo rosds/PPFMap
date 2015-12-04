@@ -1,13 +1,21 @@
 #include <PPFMap/PPFMatch.h>
 
+/** \brief Construct the PPF search structures for the model cloud.
+ *  
+ *  The model cloud contains the information about the object that is going 
+ *  to be detected in the scene cloud. The necessary information to build 
+ *  the search structure are the points and normals from the object.
+ *
+ *  \param[in] model Object's point cloud.
+ *  \param[in] normals Cloud with the normals of the object.
+ */
 template <typename PointT, typename NormalT>
-void 
-ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(const PointCloudPtr& model, 
-                                                const NormalsPtr& normals) {
+void ppfmap::PPFMatch<PointT, NormalT>::setModelCloud(
+    const PointCloudPtr& model, 
+    const NormalsPtr& normals) {
 
     model_ = model;
     normals_ = normals;
-    float affine[12];
     
     // Pair all the points in the cloud
     for (int i = 0; i < model_->size(); i++) {
