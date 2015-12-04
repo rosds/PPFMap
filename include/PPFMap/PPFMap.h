@@ -39,7 +39,7 @@ class PPFMap {
      *  \param[in] angle_step Angle discretization step.
      */
     inline void setDiscretizationAngle(float angle_step)
-        { _angle_step = distance_step; }
+        { _angle_step = angle_step; }
 
     /** \brief Compute the map for the input model.
      *  \param[in] cloud Point cloud of the model.
