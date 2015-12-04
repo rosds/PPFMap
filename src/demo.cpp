@@ -13,6 +13,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include <PPFMap/PPFMap.h>
 #include <PPFMap/PPFMatch.h>
 #include <PPFMap/CudaPPFMatch.h>
 
@@ -112,6 +113,10 @@ int main(int argc, char *argv[]) {
     // ========================================================================
     //  Compute the model's ppfs
     // ========================================================================
+
+    // FIXME: Remove this code
+    ppfmap::PPFMap<pcl::PointNormal, pcl::PointNormal> map;
+    map.compute(model_downsampled, model_downsampled);
     
     int votes;
 

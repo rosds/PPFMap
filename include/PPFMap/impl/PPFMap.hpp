@@ -1,13 +1,17 @@
 #include <PPFMap/PPFMap.h>
 
+/** \brief Compute the map for the input model.
+ *  \param[in] cloud Point cloud of the model.
+ *  \param[in] normals Cloud with the model's normals.
+ */
 template <typename PointT, typename NormalT>
-void ppfmatch::PPFMap<PointT, NormalT>::compute(CloudPtr cloud, 
-                                                NormalsPtr normals) {
+void ppfmap::PPFMap<PointT, NormalT>::compute(CloudPtr cloud, 
+                                              NormalsPtr normals) {
   // Pair all the points in the cloud
   for (int i = 0; i < cloud->size(); i++) {
 
     const auto& p1 = cloud->at(i);
-    const auto& n1 = normals_->at(i);
+    const auto& n1 = normals->at(i);
 
     if (!pcl::isFinite(p1) || !pcl::isFinite(n1)) {
       continue;
@@ -18,7 +22,7 @@ void ppfmatch::PPFMap<PointT, NormalT>::compute(CloudPtr cloud,
     for (int j = 0; j < cloud->size(); j++) {
 
       const auto& p2 = cloud->at(j);
-      const auto& n2 = normals_->at(j);
+      const auto& n2 = normals->at(j);
 
       if (i == j || !pcl::isFinite(p2) || !isFinite(n2)) {
         continue;
