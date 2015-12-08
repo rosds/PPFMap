@@ -173,6 +173,19 @@ ppfmap::PPFMatch<PointT, NormalT>::detect(const PointCloudPtr scene,
 template <typename PointT, typename NormalT>
 bool ppfmap::PPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr scene, const NormalsPtr normals, 
+    pcl::Correspondences& correspondences) {
+
+    std::vector<Pose> poses;
+    detect(scene, normals, poses);
+    for (const auto& pose : poses) {
+        correspondences.push_back(pose.c);
+    }
+}
+
+
+template <typename PointT, typename NormalT>
+bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+    const PointCloudPtr scene, const NormalsPtr normals, 
     Eigen::Affine3f& trans, 
     pcl::Correspondences& correspondences,
     int& votes) {

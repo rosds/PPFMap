@@ -114,6 +114,8 @@ public:
      */
     bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 std::vector<Pose>& poses);
+
+    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, pcl::Correspondences& correspondences);
 private:
 
     struct VotePair {
