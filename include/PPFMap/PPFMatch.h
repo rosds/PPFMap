@@ -7,8 +7,6 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/correspondence.h>
 
-#include <thrust/host_vector.h>
-
 #include <PPFMap/utils.h>
 #include <PPFMap/Pose.h>
 #include <PPFMap/DiscretizedPPF.h>
@@ -78,7 +76,7 @@ public:
      *  to be detected in the scene cloud. The necessary information to build 
      *  the search structure are the points and normals from the object.
      *
-     *  \param[in] model Point cloud containing the model object.
+     *  \param[in] model Object's point cloud.
      *  \param[in] normals Cloud with the normals of the object.
      */
     void setModelCloud(const PointCloudPtr& model, const NormalsPtr& normals);
@@ -116,6 +114,8 @@ public:
      */
     bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 std::vector<Pose>& poses);
+
+    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, pcl::Correspondences& correspondences);
 private:
 
     struct VotePair {
