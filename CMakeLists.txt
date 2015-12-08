@@ -12,7 +12,7 @@ set (CUDA_ARCH "sm_35" CACHE STRING "Cuda Architechture")
 
 find_package (CUDA REQUIRED)
 set (CUDA_NVCC_FLAGS "-arch=${CUDA_ARCH}")
-list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O2;-DVERBOSE")
+list(APPEND CUDA_NVCC_FLAGS "-O2;-DVERBOSE")
 set (CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Point Cloud Library (PCL)
