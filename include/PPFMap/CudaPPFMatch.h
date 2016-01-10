@@ -135,12 +135,19 @@ public:
      *  \param[out] correspondence Supporting correspondences from the scene to 
      *  the model.
      *  \param[out] Number of votes supporting the final pose.
-     *  \return True if the object appears in the scene, false otherwise.
      */
     void detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
                 pcl::Correspondences& correspondences,
                 int& votes);
+
+    /** \brief Return the correspondences without clustering them by the pose.
+     *  \param[in] cloud Point cloud of the scene.
+     *  \param[in] normals Normals of the scene cloud.
+     *  \param[out] correspondences
+     */
+    void getCorrespondences(const PointCloudPtr cloud, const NormalsPtr normals,
+                            pcl::Correspondences& correspondences);
 
     /** \brief Search the given scene for the object and returns a vector with 
      * the poses sorted by the votes obtained in the Hough space.

@@ -67,6 +67,17 @@ void ppfmap::CudaPPFMatch<PointT, NormalT>::detect(
         votes);
 }
 
+template <typename PointT, typename NormalT>
+void ppfmap::CudaPPFMatch<PointT, NormalT>::getCorrespondences(
+    const PointCloudPtr cloud, const NormalsPtr normals,
+    pcl::Correspondences& correspondences) {
+  std::vector<Pose> poses;
+  detect(cloud, normals, poses);
+
+  for (const auto& pose : poses) {
+    correspondences.push_back(pose.c);
+  }
+}
 
 /** \brief Search the given scene for the object and returns a vector with 
  * the poses sorted by the votes obtained in the Hough space.
