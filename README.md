@@ -6,11 +6,12 @@ implementation is as described in the [SLAM++](http://homes.cs.washington.edu/~n
 
 ### Requirements
 
-This project may compu
+To build this project you will need:
 
 + Point Cloud Library (PCL 1.7) : built with CUDA support.
 + Eigen library 3.0
 + CUDA 5.0
++ cmake 2.8
 
 ### Compile and run
 
